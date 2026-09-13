@@ -41,6 +41,20 @@ Deciso di togliere la possibilità, come in Tetris: una volta in ascensore l'ani
 Con quella regola è sparito anche `cancel_drag()`, che serviva solo a rimettere a posto un pezzo
 ripescato dalla griglia.
 
+## 7. Crash su Android dopo qualche secondo nel menu — fatto (13/09/2026)
+
+Il gioco si chiudeva da solo pochi secondi dopo l'avvio, senza toccare nulla, su telefono ARM;
+mai su Windows né sull'emulatore x86. Bisezione: la build senza AdMob crashava uguale; col suono
+silenziato dal pulsante ♪ non crashava. Colpevole: **il tema musicale in loop**. Il mixer WAV di
+Godot 4.6 non limita `loop_end` alla lunghezza dei dati e, in loop, legge fino a `loop_end`
+compreso — un campione oltre la fine del buffer, che avevo dimensionato esatto. Su x86 la lettura
+fuori buffer è innocua; sui telefoni ARM l'allocatore protetto la intercetta e uccide il processo.
+I suoni brevi non sono in loop e non passano di lì: per questo funzionavano dal primo giorno.
+
+Correzione: 256 campioni di silenzio dopo il punto di loop (`MUSIC_PAD` in `build_music()`), con
+test che pretende l'imbottitura. Rimane il fatto che generare il tema costa ~0,5 s su PC e qualche
+secondo su telefono, tutti passati sullo splash: da spostare fuori dal primo frame.
+
 ---
 
 ## Da valutare al prossimo playtest

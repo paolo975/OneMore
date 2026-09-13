@@ -15,6 +15,7 @@ const PLAY_DOOR_MAX = 0.55
 const TAP_SLOP = 14.0
 const TRAY_UNIT = 55.0
 const MUSIC_RATE = 22050
+const MUSIC_PAD = 256
 const SHAPES = [ [Vector2i(0,0)], [Vector2i(0,0),Vector2i(0,1)], [Vector2i(0,0),Vector2i(1,0)], [Vector2i(0,0),Vector2i(0,1),Vector2i(1,1)], [Vector2i(0,0),Vector2i(1,0),Vector2i(0,1),Vector2i(1,1)], [Vector2i(0,0),Vector2i(1,0),Vector2i(2,0)], [Vector2i(0,0),Vector2i(1,0),Vector2i(2,0),Vector2i(1,1)] ]
 # One row per animal. "head" null means the head tone is derived from the body.
 # "floor" is the floor from which the animal starts appearing in the queue.
@@ -356,7 +357,9 @@ func build_music() -> AudioStreamWAV:
 	var bass = [130.81,130.81,196.00,196.00, 220.00,220.00,174.61,174.61]
 	var frames = int(MUSIC_RATE*step*lead.size())
 	var data = PackedByteArray()
-	data.resize(frames*2)
+	# Silent padding past loop_end: Godot's WAV mixer reads up to loop_end inclusive when
+	# looping, and on ARM phones the hardened allocator kills a one-sample over-read.
+	data.resize((frames+MUSIC_PAD)*2)
 	for i in frames:
 		var t = float(i)/MUSIC_RATE
 		var value = 0.0

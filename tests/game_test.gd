@@ -207,7 +207,8 @@ func run() -> void:
 		var frames = theme.loop_end
 		check(theme.loop_mode == AudioStreamWAV.LOOP_FORWARD,"the theme loops forward")
 		check(frames > theme.mix_rate*4,"the theme runs at least four seconds")
-		check(theme.data.size() == frames*2,"the loop spans the whole buffer")
+		check(theme.data.size() >= (frames+64)*2,"the buffer carries silent padding past the loop end, so the mixer never reads outside it")
+		check(theme.data.decode_s16(theme.data.size()-2) == 0,"the padding is silent")
 		var peak = 0
 		var idx = 0
 		while idx < frames:
