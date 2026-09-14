@@ -373,6 +373,12 @@ func run() -> void:
 		game.release_drag(game.GRID+Vector2(43,43))
 		check(game.occupied()==1 and game.pieces[0].has("born"),"a placed animal carries its boarding time")
 		check(not game.make_piece(0,0).has("born"),"animals in the queue have not boarded yet")
+	# ads.cfg is not a Godot resource: with export_filter "all_resources" it ships only if the
+	# presets name it. Left out, unit ids are empty and the layer stays silently off on devices.
+	var presets = ConfigFile.new()
+	check(presets.load("res://export_presets.cfg")==OK,"the export presets are readable")
+	for section in ["preset.0","preset.1"]:
+		check("ads.cfg" in str(presets.get_value(section,"include_filter","")),"%s exports ads.cfg" % section)
 	# The ads layer loads nothing until the SDK says it is ready; the editor mock answers in half a second.
 	if game.ads.get("initialized") == null:
 		check(false,"the ads layer waits for the SDK before loading")

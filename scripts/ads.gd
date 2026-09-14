@@ -28,6 +28,9 @@ func _ready() -> void:
 			"banner": str(cfg.get_value(section, "banner", "")),
 			"interstitial": str(cfg.get_value(section, "interstitial", "")),
 		}
+	else:
+		# Loud, not silent: a config left out of the export is exactly what switched the ads off once.
+		print("AdMob: ads.cfg non trovato, pubblicità spenta")
 	enabled = has_plugin() and unit("banner") != ""
 	if not enabled:
 		return

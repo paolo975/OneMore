@@ -59,15 +59,20 @@ secondo su telefono, tutti passati sullo splash: da spostare fuori dal primo fra
 
 L'APK del 13/09 conteneva l'SDK (cinque `classes.dex`, App ID di test nel manifest, tutti i
 singleton `PoingGodotAdMob*` inizializzati nel log) ma né il banner né l'interstitial si vedevano
-mai. Lo dice la guida di migrazione del plugin stesso: con l'SDK Next-Gen `MobileAds.initialize()`
-è asincrono e caricare prima del callback **solleva un'eccezione**. `ads.gd` caricava appena si
-toccava ENTRA IN ASCENSORE: l'`AdView` restava creato ma vuoto, e non veniva più ricreato;
-l'interstitial restava "in caricamento" per sempre. Nessun errore GDScript nel log, coerente con
-un'eccezione nativa.
+mai. Due cause, una dietro l'altra. La prima, trovata solo il 14/09 sull'emulatore: **`ads.cfg` non
+veniva esportato**. Con `export_filter="all_resources"` Godot mette nell'APK solo le risorse che
+riconosce, e un `.cfg` non lo è finché `include_filter` non lo nomina (il plugin aggiunge il proprio
+`plugin.cfg` a mano per lo stesso motivo). Senza il file gli unit ID restano vuoti e `ads.gd` spegne
+tutto in silenzio: nessun APK costruito fino ad allora lo conteneva. La seconda, latente dietro la
+prima, la dice la guida di migrazione del plugin: con l'SDK Next-Gen `MobileAds.initialize()` è
+asincrono e caricare prima del callback **solleva un'eccezione**; `ads.gd` caricava appena si toccava
+ENTRA IN ASCENSORE.
 
-Correzione: ogni load aspetta `OnInitializationCompleteListener`; un banner fallito viene distrutto
-e ritentato alla partita dopo; ogni esito è stampato con prefisso `AdMob:` così `tools/logcat.ps1`
-lo cattura. In editor il layer gira sul mock del plugin e la sequenza è coperta dai test headless.
+Correzione: `include_filter="ads.cfg"` nei due preset, un test che lo pretende e una riga
+`AdMob: ads.cfg non trovato` nel log se dovesse mancare di nuovo; ogni load aspetta
+`OnInitializationCompleteListener`; un banner fallito viene distrutto e ritentato alla partita dopo;
+ogni esito è stampato con prefisso `AdMob:` così `tools/logcat.ps1` lo cattura. In editor il layer
+gira sul mock del plugin e la sequenza è coperta dai test headless.
 
 Resta un avviso innocuo: con il mock acceso, il log dei test termina con `ObjectDB instances leaked
 at exit` e `3 resources still in use`, dopo `ALL … CHECKS PASSED`. Il verbose li attribuisce a

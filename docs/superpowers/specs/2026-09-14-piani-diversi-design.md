@@ -95,6 +95,12 @@ Voto del piano, senza parole.
 
 ### Diagnosi
 
+**Aggiornamento 14/09, dopo la verifica sull'emulatore.** La causa primaria è un'altra: `ads.cfg`
+non veniva esportato (`export_filter="all_resources"` esclude i file che non sono risorse Godot;
+`include_filter` era vuoto), quindi sul dispositivo `unit("banner")` era vuoto ed `enabled` falso.
+L'inizializzazione asincrona descritta sotto è reale e resta corretta, ma sarebbe emersa solo dopo.
+Correzione e test nel Task 9 del piano.
+
 L'APK v2 contiene l'SDK (cinque `classes*.dex`, dieci riferimenti a `com/google/android/gms/ads`,
 `APPLICATION_ID` di test nel manifest, tutti i singleton `PoingGodotAdMob*` inizializzati nel log
 dell'emulatore). Eppure banner e interstitial non compaiono mai. La causa è nella documentazione del
