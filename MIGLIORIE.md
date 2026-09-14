@@ -84,6 +84,8 @@ at exit` e `3 resources still in use`, dopo `ALL … CHECKS PASSED`. Il verbose 
 `ads.gd` né dai test, non tocca l'exit code, e si sceglie di conviverci piuttosto che perdere i test
 della sequenza init → load.
 
+Verificato sull'emulatore x86_64 (Android 15) il 14/09/2026: le quattro righe `AdMob:` compaiono nel logcat e il banner di test (etichetta «Test Ad», creatività promozionale del canale YouTube di AdMob) è visibile in partita; la prova sul telefono ARM resta da fare.
+
 ## 9. Piani diversi — fatto (14/09/2026)
 
 Giocando qualche minuto il gioco annoiava: le forme erano da 1-2 caselle fino al piano 3 (la T al
