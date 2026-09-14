@@ -64,6 +64,10 @@ var confetti: Array = []
 var test_mode = false
 var save_path = "user://record.cfg"
 var last_tick = -1
+const LUGGAGE_KINDS = 3
+const GOLD = Color("efc66e")
+const GREY = Color("d7cec1")
+var luggage: Array = []
 
 func t(key: String) -> String:
 	return Strings.text(key, lang)
@@ -103,6 +107,7 @@ func demo_board() -> void:
 		var p = make_piece(entry[0], entry[2])
 		p.cell = entry[1]
 		pieces.append(p)
+	luggage = [{"cell":Vector2i(4,3),"kind":0}, {"cell":Vector2i(0,4),"kind":1}]
 
 func unlocked_animals() -> Array:
 	var pool: Array = []
@@ -110,6 +115,31 @@ func unlocked_animals() -> Array:
 		if ANIMALS[i].floor <= floor_number:
 			pool.append(i)
 	return pool
+
+# Luggage left in the lift: none on the first floor, then one more every two floors, five at most.
+func luggage_count(floor_id: int) -> int:
+	return 0 if floor_id <= 1 else mini(5, 1 + (floor_id - 1) / 2)
+
+func place_luggage() -> void:
+	luggage.clear()
+	var open_cells: Array = []
+	for y in SIDE:
+		for x in SIDE:
+			open_cells.append(Vector2i(x,y))
+	for i in luggage_count(floor_number):
+		var pick = rng.randi_range(0, open_cells.size()-1)
+		luggage.append({"cell":open_cells[pick], "kind":rng.randi_range(0, LUGGAGE_KINDS-1)})
+		open_cells.remove_at(pick)
+
+# Cells an animal can still take on this floor.
+func capacity() -> int:
+	return SIDE*SIDE - luggage.size()
+
+func blocked(cell: Vector2i) -> bool:
+	for item in luggage:
+		if item.cell == cell:
+			return true
+	return false
 
 func make_piece(shape_index: int = -1, person: int = -1) -> Dictionary:
 	serial += 1
@@ -138,7 +168,9 @@ func new_round() -> void:
 	drag.clear()
 	tray = [make_piece(3), make_piece(1), make_piece(0)]
 	selected = 0
-	target = mini(20, 10 + floor_number - 1)
+	place_luggage()
+	# At least three free cells beyond the minimum, however much luggage there is.
+	target = mini(mini(20, 10 + floor_number - 1), capacity() - 3)
 	# Three seconds a floor: enough for the pressure to be felt by the third one.
 	time_limit = maxf(16, 34 - (floor_number - 1) * 3.0)
 	time_left = time_limit
@@ -158,7 +190,7 @@ func occupied() -> int:
 func can_place(p: Dictionary, cell: Vector2i) -> bool:
 	for local in p.cells:
 		var c: Vector2i = cell + local
-		if c.x < 0 or c.y < 0 or c.x >= SIDE or c.y >= SIDE:
+		if c.x < 0 or c.y < 0 or c.x >= SIDE or c.y >= SIDE or blocked(c):
 			return false
 		for other in pieces:
 			for other_local in other.cells:
@@ -259,7 +291,7 @@ func release_drag(pos: Vector2) -> void:
 			toast = t("toast_goal")
 			toast_time = 2.5
 		drag.clear()
-		if occupied() >= SIDE*SIDE:
+		if occupied() >= capacity():
 			depart()
 	else:
 		drag.clear()
@@ -435,6 +467,29 @@ func heart(pos: Vector2, filled: bool) -> void:
 	draw_circle(pos+Vector2(-9,-5),12,color)
 	draw_circle(pos+Vector2(9,-5),12,color)
 	draw_colored_polygon(PackedVector2Array([pos+Vector2(-20,0),pos+Vector2(20,0),pos+Vector2(0,24)]),color)
+
+# Three things people leave in lifts, in the same flat style as the animals.
+func draw_luggage(kind: int, at: Vector2, unit: float) -> void:
+	var inset = unit*0.1
+	var body = Rect2(at+Vector2(inset,inset), Vector2.ONE*(unit-inset*2))
+	match kind:
+		0: # Suitcase: leather, a handle on top, two brass latches.
+			box(Rect2(body.position+Vector2(0,unit*0.14), Vector2(body.size.x, body.size.y-unit*0.14)), Color("8d5a34"), int(unit*0.08), INK, 2)
+			box(Rect2(at+Vector2(unit*0.36,unit*0.08), Vector2(unit*0.28,unit*0.14)), Color("6f4526"), int(unit*0.05), INK, 2)
+			for dx in [0.28, 0.66]:
+				box(Rect2(at+Vector2(unit*dx,unit*0.42), Vector2(unit*0.08,unit*0.14)), GOLD, 2)
+		1: # Potted plant: a coral pot under three mint leaves.
+			var pot = PackedVector2Array([at+Vector2(unit*0.25,unit*0.5), at+Vector2(unit*0.75,unit*0.5), at+Vector2(unit*0.66,unit*0.9), at+Vector2(unit*0.34,unit*0.9)])
+			draw_colored_polygon(pot, CORAL)
+			pot.append(pot[0])
+			draw_polyline(pot, INK, 2, true)
+			for leaf in [Vector2(0.5,0.28), Vector2(0.32,0.4), Vector2(0.68,0.4)]:
+				draw_circle(at+leaf*unit, unit*0.16, MINT)
+				draw_arc(at+leaf*unit, unit*0.16, 0, TAU, 24, INK, 2, true)
+		2: # Cardboard box with a cross of tape.
+			box(body, Color("d9b67a"), int(unit*0.05), INK, 2)
+			draw_line(body.position+Vector2(body.size.x*0.5,0), body.position+Vector2(body.size.x*0.5,body.size.y), Color("c58a55"), unit*0.09)
+			draw_line(body.position+Vector2(0,body.size.y*0.5), body.position+Vector2(body.size.x,body.size.y*0.5), Color("c58a55"), unit*0.09)
 
 func animal_outline(cells: Array, origin: Vector2, unit: float) -> PackedVector2Array:
 	# Trace only external edges: the animal IS the polyomino, without tile seams.
@@ -650,6 +705,8 @@ func _draw() -> void:
 	for y in SIDE:
 		for x in SIDE:
 			box(Rect2(GRID+Vector2(x,y)*CELL+Vector2.ONE*2,Vector2.ONE*(CELL-4)),Color("eee2cd"),9)
+	for item in luggage:
+		draw_luggage(item.kind, GRID+Vector2(item.cell)*CELL, CELL)
 	for p in pieces:
 		draw_person(p,GRID+Vector2(p.cell)*CELL,CELL)
 	if not drag.is_empty():

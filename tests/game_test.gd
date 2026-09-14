@@ -252,6 +252,53 @@ func run() -> void:
 	game.start_game()
 	game._process(game.time_limit+1.0)
 	check(game.lives==2 and game.floor_number==1,"an untouched floor costs a life and is retried")
+	# Luggage: cells already taken when the floor opens, more of them the higher you go.
+	if not game.has_method("luggage_count") or game.get("luggage") == null:
+		check(false,"the game knows how much luggage each floor carries")
+	else:
+		for pair in [[1,0],[2,1],[3,2],[5,3],[7,4],[9,5],[20,5]]:
+			check(game.luggage_count(pair[0])==pair[1],"floor %d carries %d pieces of luggage" % [pair[0],pair[1]])
+		game.floor_number = 9
+		game.new_round()
+		check(game.luggage.size()==5,"the round places as much luggage as the floor says")
+		var seen = {}
+		var inside = true
+		for item in game.luggage:
+			seen[item.cell] = true
+			if item.cell.x < 0 or item.cell.y < 0 or item.cell.x >= 5 or item.cell.y >= 5:
+				inside = false
+		check(seen.size()==5 and inside,"luggage sits on distinct cells inside the grid")
+		check(game.capacity()==20,"capacity is the grid minus the luggage")
+		check(game.occupied()==0,"luggage does not count as animals aboard")
+		var single = game.make_piece(0,0)
+		check(not game.can_place(single,game.luggage[0].cell),"an animal cannot stand on the luggage")
+		for floor_id in range(1,40):
+			game.floor_number=floor_id
+			game.new_round()
+			check(game.target<=game.capacity()-3,"at least three free cells beyond the minimum on floor %d" % floor_id)
+		# A lift full around the luggage leaves on its own.
+		game.floor_number = 2
+		game.new_round()
+		check(game.luggage.size()==1 and game.capacity()==24,"floor 2 has one piece of luggage")
+		var last = Vector2i(-1,-1)
+		for y in 5:
+			for x in 5:
+				var cell = Vector2i(x,y)
+				if game.blocked(cell):
+					continue
+				if last.x < 0:
+					last = cell
+					continue
+				var filler = game.make_piece(0,0)
+				filler.cell = cell
+				game.pieces.append(filler)
+		check(game.occupied()==23 and game.state=="playing","23 animals around one suitcase keep waiting")
+		game.tray[0] = game.make_piece(0,0)
+		game.press(Vector2(110,930))
+		game.release_drag(game.GRID+Vector2(last)*game.CELL+Vector2(43,43))
+		check(game.occupied()==24 and game.state=="transit","the lift leaves when every cell not taken by luggage is filled")
+		# Long enough to end any transit, including the stretched one the newcomer will bring later.
+		game._process(4)
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)
