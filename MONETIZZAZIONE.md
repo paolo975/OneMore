@@ -35,6 +35,9 @@ Il pubblico dichiarato è di bambini. Questo comporta, in ordine:
    over è in zona grigia e va confrontato con la versione della policy in vigore al momento.
 2. **COPPA / GDPR-K**: il flag child-directed è impostato nel codice; va dichiarato anche nella
    console AdMob e nella scheda Play Console (sezione *Target audience and content*).
+   - `tag_for_under_age_of_consent` (TFUA) in `scripts/ads.gd` è ancora `UNSPECIFIED`: per un pubblico
+     di 4-6 anni in UE/UK va impostato a `TRUE` accanto al flag child-directed. Ora che
+     `set_request_configuration` viene davvero eseguita (MIGLIORIE §8) l'impostazione ha effetto.
 3. **Privacy policy** pubblicata a un URL, obbligatoria sia per AdMob sia per Play Store.
 4. **Consenso UMP** per l'Europa: il plugin include `UserMessagingPlatform`; non è ancora
    cablato nel gioco.

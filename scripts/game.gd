@@ -155,15 +155,15 @@ func stars_for(count: int) -> int:
 		return 2
 	return 1
 
-# Sound cues of the current transit, as [time, frequency]: one rising tone per star lit,
-# then a three-note fanfare when a new animal steps on stage.
+# Sound cues of the current transit, as [time, frequency, duration]: one rising tone per star
+# lit, then a three-note fanfare when a new animal steps on stage.
 func transit_cues() -> Array:
 	var cues: Array = []
 	for k in round_stars:
-		cues.append([STAR_TIMES[k], STAR_TONES[k]])
+		cues.append([STAR_TIMES[k], STAR_TONES[k], 0.1])
 	if newcomer >= 0:
 		for k in 3:
-			cues.append([FANFARE_TIMES[k], FANFARE_TONES[k]])
+			cues.append([FANFARE_TIMES[k], FANFARE_TONES[k], 0.12])
 	return cues
 
 # The transit stretches when there is a new animal to introduce.
@@ -191,6 +191,7 @@ func start_game() -> void:
 	lives = 3
 	floor_number = 1
 	run_stars = 0
+	round_stars = 0
 	new_round()
 	ads.show_banner()
 	ads.preload_interstitial()
@@ -410,7 +411,7 @@ func _process(delta: float) -> void:
 		door = lerpf(door_at_depart,1.0,clampf(transit_time*2,0,1))
 		var cues = transit_cues()
 		while cues_played < cues.size() and transit_time >= cues[cues_played][0]:
-			tone(cues[cues_played][1],0.1)
+			tone(cues[cues_played][1],cues[cues_played][2])
 			cues_played += 1
 		if transit_time > transit_length():
 			if lives <= 0:

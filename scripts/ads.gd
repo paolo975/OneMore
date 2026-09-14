@@ -75,10 +75,15 @@ func show_banner() -> void:
 			banner_loaded = true
 			print("AdMob: banner caricato")
 		listener.on_ad_failed_to_load = func(error: LoadAdError) -> void:
-			print("AdMob: banner fallito codice %d: %s" % [error.code, error.message])
-			# Drop the empty view, so the next game asks again instead of showing nothing forever.
-			_banner.destroy()
-			_banner = null
+			# The plugin may hand over null, and the view may already be gone: guard both, or the
+			# lambda aborts before dropping the view and the next game never retries.
+			if error != null:
+				print("AdMob: banner fallito codice %d: %s" % [error.code, error.message])
+			else:
+				print("AdMob: banner fallito")
+			if _banner != null:
+				_banner.destroy()
+				_banner = null
 			banner_loaded = false
 		_banner.ad_listener = listener
 		_banner.load_ad(AdRequest.new())

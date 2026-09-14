@@ -242,6 +242,10 @@ func run() -> void:
 		check(game.ads.get("initialized") == false and game.ads._banner == null and game.ads.get("banner_wanted") == true,"a banner asked for before the SDK is ready is remembered, not loaded")
 		check(game.ads.show_interstitial() == false,"an interstitial cannot be shown before it is loaded")
 		check(game.ads.banner_reserve() == 90.0,"the layout keeps a strip for the banner")
+		# Without plugin or mock — the exported Windows build, a phone without the plugin — the layer is inert.
+		var off = load("res://scripts/ads.gd").new()
+		check(off.banner_reserve() == 0.0 and off.show_interstitial() == false,"a disabled layer reserves nothing and shows nothing")
+		off.free()
 		check(game.ads.config.get("test",false) == true,"the shipped config runs on Google test ids")
 		check(String(game.ads.unit("banner")).begins_with("ca-app-pub-3940256099942544/"),"the banner unit id is the official test one")
 		check(String(game.ads.unit("interstitial")).begins_with("ca-app-pub-3940256099942544/"),"the interstitial unit id is the official test one")
@@ -366,6 +370,12 @@ func run() -> void:
 				game.depart()
 				check(game.newcomer==-1 and game.transit_length()==1.6,"leaving floor 1 announces nobody")
 				game._process(2)
+				# Star tones last a tenth of a second, the fanfare notes 0.12 s, as the spec says.
+				game.round_stars = 2
+				game.newcomer = 5
+				var cues = game.transit_cues()
+				check(cues.size()==5 and cues[0].size()==3 and cues[0][2]==0.1 and cues[4][0]==1.7 and cues[4][2]==0.12,"star tones last 0.1 s and fanfare notes 0.12 s")
+				game.new_round()
 		# An animal that has just boarded remembers when, so it can bounce for a moment.
 		game.start_game()
 		game.tray[0] = game.make_piece(0,0)
@@ -398,7 +408,7 @@ func run() -> void:
 		check(game.ads._interstitial != null,"the interstitial is preloaded by the initialisation callback")
 		check(game.ads.show_interstitial(),"a loaded interstitial goes on screen")
 		check(game.ads._interstitial == null,"a shown interstitial is consumed")
-		game.free()
+		game.queue_free()
 		await process_frame
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
