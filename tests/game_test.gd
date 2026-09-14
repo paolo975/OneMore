@@ -249,6 +249,13 @@ func run() -> void:
 		check(game.ads.config.get("test",false) == true,"the shipped config runs on Google test ids")
 		check(String(game.ads.unit("banner")).begins_with("ca-app-pub-3940256099942544/"),"the banner unit id is the official test one")
 		check(String(game.ads.unit("interstitial")).begins_with("ca-app-pub-3940256099942544/"),"the interstitial unit id is the official test one")
+		# Production ids live in the file, but a debug build — editor, tests, any debug APK — keeps
+		# Google's test ids: a real ad shown to the owner's own phone is invalid traffic for AdMob.
+		var ads_cfg = ConfigFile.new()
+		check(ads_cfg.load("res://ads.cfg")==OK and bool(ads_cfg.get_value("ads","test",true))==false,"ads.cfg allows production ids")
+		check(str(ads_cfg.get_value("production","banner","")).begins_with("ca-app-pub-1563447385855068/") and str(ads_cfg.get_value("production","interstitial","")).begins_with("ca-app-pub-1563447385855068/"),"the production unit ids belong to the game's AdMob account")
+		check(OS.is_debug_build() and game.ads.config.get("test",false)==true,"a debug build stays on test ids whatever the file says")
+		check(str(ProjectSettings.get_setting("admob/general/android/app_id",""))=="ca-app-pub-1563447385855068~4808739978","the production App ID is in the project settings")
 		game.start_game()
 		game.lives = 1
 		game.depart()

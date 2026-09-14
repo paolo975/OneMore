@@ -22,7 +22,12 @@ var _shown = null
 func _ready() -> void:
 	var cfg = ConfigFile.new()
 	if cfg.load("res://ads.cfg") == OK:
-		config["test"] = bool(cfg.get_value("ads", "test", true))
+		# Production ids only in a release build: a debug APK on the owner's own phone would be
+		# invalid traffic for AdMob. The file's flag can still force test ids everywhere.
+		config["test"] = bool(cfg.get_value("ads", "test", true)) or OS.is_debug_build()
+		if not config["test"] and str(cfg.get_value("production", "banner", "")) == "":
+			print("AdMob: sezione [production] vuota, uso gli ID di test")
+			config["test"] = true
 		var section = "test" if config["test"] else "production"
 		_ids = {
 			"banner": str(cfg.get_value(section, "banner", "")),

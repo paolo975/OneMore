@@ -15,16 +15,23 @@ v5.0.0 con due formati.
 
 ## Test e produzione
 
-| Dove | Test (ora) | Produzione |
+Dal 14/09/2026 gli ID del conto AdMob del gioco sono nel repository e la scelta tra test e
+produzione è **automatica per tipo di build** (`OS.is_debug_build()` in `scripts/ads.gd`):
+
+| Dove | Valore | Quando si usa |
 |---|---|---|
-| `project.godot` → `[admob] general/android/app_id` | `ca-app-pub-3940256099942544~3347511713` | il tuo App ID |
-| `ads.cfg` → `[ads] test` | `true` | `false` |
-| `ads.cfg` → `[production] banner` | vuoto | il tuo unit ID banner |
-| `ads.cfg` → `[production] interstitial` | vuoto | il tuo unit ID interstitial |
+| `project.godot` → `[admob] general/android/app_id` | `ca-app-pub-1563447385855068~4808739978` | sempre (finisce nel manifest; Google consiglia l'App ID vero anche in sviluppo) |
+| `ads.cfg` → `[test] banner` / `interstitial` | ID di test ufficiali di Google | editor, test headless, ogni APK di debug (`tools/build.ps1`) |
+| `ads.cfg` → `[production] banner` | `ca-app-pub-1563447385855068/1480256094` | solo build release |
+| `ads.cfg` → `[production] interstitial` | `ca-app-pub-1563447385855068/5429530382` | solo build release |
+| `ads.cfg` → `[ads] test` | `false` | `true` forza gli ID di test anche in release |
 
 Gli ID di test di Google mostrano annunci veri con la scritta *Test Ad*, non generano ricavi e non
-violano le policy. **Non usare mai gli ID di produzione in una build di debug** o mentre si prova
-sul proprio telefono: AdMob rileva il traffico non valido e sospende l'account.
+violano le policy. **Un annuncio di produzione mostrato sul proprio telefono è traffico non valido**
+e AdMob sospende l'account: per questo la build di debug non può usarli, qualunque cosa dica il
+file, e un test lo verifica. La build release (`--export-release`, keystore di rilascio ancora da
+creare) è l'unica che mostra annunci veri: provarla solo su un dispositivo registrato come *test
+device* nella console AdMob.
 
 ## Prima di pubblicare
 
