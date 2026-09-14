@@ -299,6 +299,13 @@ func run() -> void:
 		check(game.occupied()==24 and game.state=="transit","the lift leaves when every cell not taken by luggage is filled")
 		# Long enough to end any transit, including the stretched one the newcomer will bring later.
 		game._process(4)
+		# Bigger shapes arrive sooner: the L from floor 1, the square from 3, the bar from 5, the T from 7.
+		for pair in [[1,3],[3,4],[5,5],[7,6]]:
+			game.floor_number = pair[0]
+			var biggest = -1
+			for i in 400:
+				biggest = maxi(biggest, game.SHAPES.find(game.make_piece().cells))
+			check(biggest==pair[1],"floor %d deals shapes up to index %d" % [pair[0],pair[1]])
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)

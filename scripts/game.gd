@@ -144,7 +144,8 @@ func blocked(cell: Vector2i) -> bool:
 func make_piece(shape_index: int = -1, person: int = -1) -> Dictionary:
 	serial += 1
 	if shape_index < 0:
-		shape_index = rng.randi_range(0, mini(6, 2 + floor_number / 3))
+		# The L from the first floor, the square from the third, the bar from the fifth, the T from the seventh.
+		shape_index = rng.randi_range(0, mini(6, 3 + (floor_number - 1) / 2))
 	if person < 0:
 		var pool = unlocked_animals()
 		person = pool[rng.randi_range(0, pool.size()-1)]
