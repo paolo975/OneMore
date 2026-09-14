@@ -61,8 +61,8 @@ Voto del piano, senza parole.
   ciascuna con un tono di 0,1 s: 700, 900, 1100 Hz. In caso di fallimento le tre sagome grigie
   restano spente.
 - Coriandoli: `15 * round_stars` invece di 36 fissi.
-- Schermata finale: una stella d'oro (raggio 16) a `(300, 662)` seguita da `× N` (24 px), tra la riga
-  del piano (631) e quella del record (692).
+- Schermata finale: una stella d'oro (raggio 14) a `(300, 658)` seguita da `× N` (22 px), tra la riga
+  del piano (631) e quella del record (692) senza sfiorare nessuna delle due.
 - Il punteggio non cambia formula: le stelle sono lo strato leggibile, i punti restano per il record.
 - Stringa `hud_goal_done` → "MINIMO RAGGIUNTO! Riempi tutto per tre stelle." /
   "MINIMUM REACHED! Fill it all for three stars." (è la frase che il genitore legge ad alta voce).
