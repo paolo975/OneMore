@@ -403,6 +403,19 @@ func run() -> void:
 			["res://addons/admob/gdscript/src/api/InterstitialAdLoader.gd", "PackedStringArray(ad_request.keywords), _uid)"],
 			["res://addons/admob/gdscript/src/api/MobileAds.gd", "PackedStringArray(request_configuration.test_device_ids)"]]:
 		check(FileAccess.get_file_as_string(pair[0]).contains(pair[1]),"%s hands the native plugin a PackedStringArray" % pair[0].get_file())
+	# Store listing: both languages present and inside the Play Console limits (30 / 80 / 4000).
+	var listing = ConfigFile.new()
+	check(listing.load("res://store/listing.cfg")==OK,"the store listing is readable")
+	for lang in ["it","en"]:
+		var title = str(listing.get_value(lang,"title",""))
+		var short = str(listing.get_value(lang,"short",""))
+		var full = str(listing.get_value(lang,"full",""))
+		check(title.length() > 0 and title.length() <= 30,"%s store title fits 30 characters" % lang)
+		check(short.length() > 0 and short.length() <= 80,"%s short description fits 80 characters" % lang)
+		check(full.length() >= 200 and full.length() <= 4000,"%s full description fits 4000 characters" % lang)
+		for i in range(1,6):
+			var caption = str(listing.get_value(lang,"caption_%d" % i,""))
+			check(caption.length() > 0 and caption.length() <= 60,"%s screenshot caption %d fits one band" % [lang,i])
 	# The ads layer loads nothing until the SDK says it is ready; the editor mock answers in half a second.
 	if game.ads.get("initialized") == null:
 		check(false,"the ads layer waits for the SDK before loading")

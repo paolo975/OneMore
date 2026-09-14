@@ -32,6 +32,7 @@ powershell -ExecutionPolicy Bypass -File tools/run.ps1
 powershell -ExecutionPolicy Bypass -File tools/run.ps1 -Editor
 powershell -ExecutionPolicy Bypass -File tools/test.ps1
 powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Target All
+powershell -ExecutionPolicy Bypass -File tools/store.ps1
 ```
 
 Su un altro PC installare [Godot 4.6](https://godotengine.org/download/archive/4.6-stable/) con template corrispondenti e seguire la [configurazione Android ufficiale](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html). Configurare Java SDK Path e Android SDK Path nelle impostazioni dell'editor. Per l'APK servono platform-tools, build-tools 35.0.1 e le piattaforme android-35 e **android-36**: le librerie AdMob 5.x richiedono `compileSdk 36`, che il template di Godot 4.6 non ha (porta 35). `tools/build.ps1` alza il valore in `android/build/config.gradle` a ogni build, così sopravvive alla reinstallazione del template. L'export Android usa la **build Gradle** (`gradle_build/use_gradle_build=true`, con `compress_native_libraries=true` perché altrimenti l'APK triplica), obbligatoria per il plugin AdMob: il template Android è installato in `android/build/` (escluso da Git, si rigenera dall'editor con *Project → Install Android Build Template*) e la prima build scarica Gradle e le dipendenze, quindi richiede rete e qualche minuto. Nessun NDK/CMake.
@@ -57,6 +58,7 @@ La chiave Android **debug** è fuori dal repository, in `%APPDATA%/Godot/keystor
 - `scripts/game.gd`: regole, interfaccia, personaggi, input e audio. La costante `ANIMALS` è una riga per animale: colori, tratti del corpo e della testa, e il campo `floor` che decide da quale piano compare. Aggiungere un personaggio significa aggiungere una riga e, se serve, un nuovo caso in `draw_person`.
 - `tests/game_test.gd`: regressioni su incastri, timer, vite, punteggio, pausa e salvataggio, con record di test separato.
 - `export_presets.cfg`: preset Android e Windows.
+- `store/`: la scheda Play Store — testi in `listing.cfg` (italiano e inglese, con un test sui limiti della console) e `README.md` con dove va cosa e la checklist per un gioco per bambini. Icona 512, grafica in evidenza e quindici screenshot con didascalia per lingua (telefono, tablet 7" e 10") si generano con `tools/store.ps1` in `artifacts/store/`, dallo stesso codice che disegna il gioco; la stessa corsa scrive `assets/icon.png`, l'icona dell'app.
 - `artifacts/`: eseguibili, anteprima e log locali (esclusi da Git).
 - `MONETIZZAZIONE.md`: valutazione dell'integrazione futura, senza annunci nel prototipo.
 
