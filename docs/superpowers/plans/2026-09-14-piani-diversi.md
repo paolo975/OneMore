@@ -1253,3 +1253,120 @@ Expected in `artifacts/logcat.txt`: `AdMob: inizializzato`, `AdMob: banner caric
 Se le quattro righe ci sono: in coda a `MIGLIORIE.md` §8, dopo il paragrafo "Resta un avviso innocuo", la riga
 `Verificato sull'emulatore x86_64 (Android 15) il 14/09/2026: le quattro righe `AdMob:` compaiono nel logcat e il banner di test è visibile in partita; la prova sul telefono ARM resta da fare.`
 (adattare "il banner di test è visibile" a ciò che mostra lo screenshot). Commit solo di `MIGLIORIE.md`: `Annota la verifica della pubblicità sull'emulatore` + riga Co-Authored-By.
+
+---
+
+### Task 10: il wrapper del plugin passa `Array[String]` dove il nativo vuole `String[]`
+
+Aggiunto il 14/09/2026 dopo il Task 9. Con `ads.cfg` esportato compare `AdMob: inizializzato`, ma banner e interstitial non partono: il logcat mostra tre `SCRIPT ERROR: Invalid type in function '…' in base 'JNISingleton'. The array of argument N (Array[String]) does not have the same element type as the expected typed array argument` in `MobileAds.gd:48` (`set_request_configuration`), `InterstitialAdLoader.gd:54` (`load`) e `AdView.gd:62` (`load_ad`). `javap` sull'AAR conferma le firme Java: `set_request_configuration(Dictionary, String[])`, `load_ad(int, Dictionary, String[])`, `load(String, Dictionary, String[], int)`. Il wrapper GDScript del plugin v5.0.0 passa `AdRequest.keywords` e `RequestConfiguration.test_device_ids`, dichiarati `Array[String]`; Godot 4.6 li rifiuta. Il changelog upstream ammette lo stesso difetto ("Fixed `Array[String]` JNI signature mismatch in `RewardedAdLoader.load()`") e la v5.1.0 è uscita il 13/09/2026: l'aggiornamento dell'addon è rinviato (binari nativi da riscaricare, protezione anti-mismatch dell'exporter); qui si corregge il wrapper in locale passando `PackedStringArray(...)`, il tipo Variant naturale di `String[]`, con un test che pretende la patch così che un reinstall dell'addon fallisca rumorosamente.
+
+**Files:**
+- Modify: `addons/admob/gdscript/src/api/AdView.gd:62`, `addons/admob/gdscript/src/api/InterstitialAdLoader.gd:54`, `addons/admob/gdscript/src/api/MobileAds.gd:48-49`
+- Modify: `tests/game_test.gd` (test di guardia, a un tab, subito dopo il blocco `for section in ["preset.0","preset.1"]` del Task 9)
+- Modify: `README.md`, `MIGLIORIE.md`, `docs/superpowers/specs/2026-09-14-piani-diversi-design.md`
+- Produce: APK ricostruito; `artifacts/logcat.txt` con le quattro righe `AdMob:`; screenshot con banner
+
+**Interfaces:**
+- Consumes: come Task 9 (emulatore `emulator-5554`, coordinate 720×1280, `tools/build.ps1`, `tools/logcat.ps1`).
+
+- [ ] **Step 1: Test di guardia (fallirà)**
+
+In `tests/game_test.gd`, a UN tab, subito dopo il ciclo `for section in ["preset.0","preset.1"]:` del Task 9 (e prima del commento `# The ads layer loads nothing until the SDK says it is ready`):
+
+```gdscript
+	# Godot 4.6 rejects a typed Array[String] where the native plugin declares String[]: the three
+	# wrapper calls this game uses must hand over a PackedStringArray, or no ad ever loads on Android.
+	for pair in [
+			["res://addons/admob/gdscript/src/api/AdView.gd", "PackedStringArray(ad_request.keywords))"],
+			["res://addons/admob/gdscript/src/api/InterstitialAdLoader.gd", "PackedStringArray(ad_request.keywords), _uid)"],
+			["res://addons/admob/gdscript/src/api/MobileAds.gd", "PackedStringArray(request_configuration.test_device_ids)"]]:
+		check(FileAccess.get_file_as_string(pair[0]).contains(pair[1]),"%s hands the native plugin a PackedStringArray" % pair[0].get_file())
+```
+
+- [ ] **Step 2: Eseguire i test e vedere il fallimento**
+
+Run: `powershell -ExecutionPolicy Bypass -File tools/test.ps1`
+Expected: tre FAIL (`AdView.gd hands the native plugin a PackedStringArray`, `InterstitialAdLoader.gd …`, `MobileAds.gd …`); `3 CHECKS FAILED, 223 passed`.
+
+- [ ] **Step 3: Patch del wrapper**
+
+`addons/admob/gdscript/src/api/AdView.gd`, riga 62: sostituire
+`_plugin.load_ad(_uid, ad_request.convert_to_dictionary(), ad_request.keywords)`
+con
+`_plugin.load_ad(_uid, ad_request.convert_to_dictionary(), PackedStringArray(ad_request.keywords))`
+
+`addons/admob/gdscript/src/api/InterstitialAdLoader.gd`, riga 54: sostituire
+`_plugin.load(ad_unit_id, ad_request.convert_to_dictionary(), ad_request.keywords, _uid)`
+con
+`_plugin.load(ad_unit_id, ad_request.convert_to_dictionary(), PackedStringArray(ad_request.keywords), _uid)`
+
+`addons/admob/gdscript/src/api/MobileAds.gd`, righe 47-49: sostituire
+```gdscript
+		_plugin.set_request_configuration(
+			request_configuration.convert_to_dictionary(), request_configuration.test_device_ids
+		)
+```
+con
+```gdscript
+		# Godot 4.6 rejects Array[String] for a Java String[]: hand over a PackedStringArray.
+		_plugin.set_request_configuration(
+			request_configuration.convert_to_dictionary(), PackedStringArray(request_configuration.test_device_ids)
+		)
+```
+
+- [ ] **Step 4: Eseguire i test e vederli passare**
+
+Run: `powershell -ExecutionPolicy Bypass -File tools/test.ps1`
+Expected: `ALL 226 CHECKS PASSED` (poi le due righe di leak note). Il mock accetta qualsiasi tipo, quindi il resto della sequenza resta verde.
+
+- [ ] **Step 5: Documentazione**
+
+`README.md`, sezione "Pubblicità (AdMob)", dopo il punto che inizia con "`ads.cfg` non è una risorsa Godot" aggiungere il punto:
+
+```
+- Il wrapper GDScript del plugin v5.0.0 passa `Array[String]` a tre metodi nativi che dichiarano `String[]` (`set_request_configuration`, `AdView.load_ad`, `InterstitialAdLoader.load`) e Godot 4.6 li rifiuta con `Invalid type … JNISingleton`: nessun annuncio si caricava. Le tre chiamate in `addons/admob/gdscript/src/api/` sono **patchate in locale** con `PackedStringArray(...)` e un test lo pretende — reinstallando l'addon la patch va riapplicata o va verificato che la v5.1.0 (13/09/2026) l'abbia risolto.
+```
+
+`MIGLIORIE.md`, §8: nel paragrafo che inizia con "L'APK del 13/09 conteneva l'SDK", sostituire "Due cause, una dietro l'altra." con "Tre cause, una dietro l'altra." e aggiungere in coda al paragrafo:
+
+```
+ La terza, dietro le prime due: il wrapper GDScript del plugin passa `Array[String]` a metodi nativi che
+vogliono `String[]` (`set_request_configuration`, `load_ad`, `load`) e Godot 4.6 li rifiuta con
+`Invalid type … JNISingleton` — lo stesso difetto che upstream dichiara di aver corretto solo per il
+`RewardedAdLoader`.
+```
+
+e nel paragrafo "Correzione:" aggiungere prima di "ogni load aspetta": "le tre chiamate del wrapper patchate in locale con `PackedStringArray(...)` (test di guardia, da riverificare aggiornando l'addon alla 5.1.0);".
+
+`docs/superpowers/specs/2026-09-14-piani-diversi-design.md`, §6, in coda al paragrafo "**Aggiornamento 14/09**" aggiungere:
+
+```
+Terza causa, emersa dopo la seconda: il wrapper GDScript del plugin passa `Array[String]` dove il nativo
+dichiara `String[]` e Godot 4.6 rifiuta la chiamata; patch locale con `PackedStringArray` nel Task 10.
+```
+
+- [ ] **Step 6: Commit**
+
+Stage `addons/admob/gdscript/src/api/AdView.gd addons/admob/gdscript/src/api/InterstitialAdLoader.gd addons/admob/gdscript/src/api/MobileAds.gd tests/game_test.gd README.md MIGLIORIE.md docs/superpowers/specs/2026-09-14-piani-diversi-design.md` (non `project.godot`). Messaggio:
+
+```
+Plugin AdMob: PackedStringArray dove il nativo vuole String[]
+
+Godot 4.6 rifiuta gli Array[String] che il wrapper v5.0.0 passa a
+set_request_configuration, load_ad e load: nessun annuncio si caricava anche
+con ads.cfg a bordo. Patch locale alle tre chiamate, test che la pretende,
+diagnosi aggiornata in README, MIGLIORIE e spec.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+```
+
+- [ ] **Step 7: Rebuild, installazione, registrazione**
+
+Come Task 9, Step 8-9: `tools/build.ps1 -Target Android` (600 s) → `[ DONE ] export`; `adb -s emulator-5554 install -r artifacts/AncoraUno-debug.apk` → `Success`; `tools/logcat.ps1 -Seconds 150` in background; dopo 12 s tap (360,1070); dopo 3 s screenshot `artifacts/emulatore-partita.png`; swipe `142 941 188 368 500`; screenshot `artifacts/emulatore-piazzato.png`; attesa fino alla riscrittura di `artifacts/logcat.txt`; poi un ulteriore screenshot `artifacts/emulatore-banner.png` a circa 20 s dal tocco (il banner di test arriva dalla rete).
+Expected: `grep -a "AdMob:" artifacts/logcat.txt` → `inizializzato`, `banner caricato`, `interstitial caricato`, `interstitial mostrato`; `grep -a "SCRIPT ERROR" artifacts/logcat.txt` vuoto; negli screenshot carte alte 150 e, in `emulatore-banner.png`, il banner *Test Ad* in basso.
+
+- [ ] **Step 8: Annotare l'esito**
+
+Se le quattro righe ci sono e nessun `SCRIPT ERROR`: in coda a `MIGLIORIE.md` §8, dopo il paragrafo "Resta un avviso innocuo", la riga
+`Verificato sull'emulatore x86_64 (Android 15) il 14/09/2026: le quattro righe `AdMob:` compaiono nel logcat e il banner di test è visibile in partita; la prova sul telefono ARM resta da fare.`
+(adattare la parte sul banner a ciò che mostra `emulatore-banner.png`). Commit solo di `MIGLIORIE.md`: `Annota la verifica della pubblicità sull'emulatore` + riga Co-Authored-By. Se invece compare un errore nuovo, riportarlo testualmente e non toccare MIGLIORIE.
