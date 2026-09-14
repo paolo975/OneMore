@@ -55,6 +55,45 @@ Correzione: 256 campioni di silenzio dopo il punto di loop (`MUSIC_PAD` in `buil
 test che pretende l'imbottitura. Rimane il fatto che generare il tema costa ~0,5 s su PC e qualche
 secondo su telefono, tutti passati sullo splash: da spostare fuori dal primo frame.
 
+## 8. La pubblicità non compariva — fatto (14/09/2026)
+
+L'APK del 13/09 conteneva l'SDK (cinque `classes.dex`, App ID di test nel manifest, tutti i
+singleton `PoingGodotAdMob*` inizializzati nel log) ma né il banner né l'interstitial si vedevano
+mai. Lo dice la guida di migrazione del plugin stesso: con l'SDK Next-Gen `MobileAds.initialize()`
+è asincrono e caricare prima del callback **solleva un'eccezione**. `ads.gd` caricava appena si
+toccava ENTRA IN ASCENSORE: l'`AdView` restava creato ma vuoto, e non veniva più ricreato;
+l'interstitial restava "in caricamento" per sempre. Nessun errore GDScript nel log, coerente con
+un'eccezione nativa.
+
+Correzione: ogni load aspetta `OnInitializationCompleteListener`; un banner fallito viene distrutto
+e ritentato alla partita dopo; ogni esito è stampato con prefisso `AdMob:` così `tools/logcat.ps1`
+lo cattura. In editor il layer gira sul mock del plugin e la sequenza è coperta dai test headless.
+
+Resta un avviso innocuo: con il mock acceso, il log dei test termina con `ObjectDB instances leaked
+at exit` e `3 resources still in use`, dopo `ALL … CHECKS PASSED`. Il verbose li attribuisce a
+`InterstitialAdLoader` del plugin, che tiene il conto dei riferimenti a mano (`reference()` /
+`unreference()`) e resta con conteggio zero senza essere liberato: non è raggiungibile da
+`ads.gd` né dai test, non tocca l'exit code, e si sceglie di conviverci piuttosto che perdere i test
+della sequenza init → load.
+
+## 9. Piani diversi — fatto (14/09/2026)
+
+Giocando qualche minuto il gioco annoiava: le forme erano da 1-2 caselle fino al piano 3 (la T al
+piano 12), ogni piano era una griglia vuota identica alla precedente, gli sblocchi di Elmo e Tea
+passavano in silenzio e dopo il minimo non c'era un obiettivo che un bambino di cinque anni
+potesse leggere. Quattro cose, tutte visive:
+
+- **Bagagli**: valigie, piante e scatole già sul pavimento dal piano 2 (1, 2, 2, 3, 3, 4, 4, 5…).
+  Il minimo tiene sempre almeno tre caselle libere oltre l'obiettivo.
+- **Forme grandi prima**: L dal piano 1, quadrato dal 3, barra dal 5, T dal 7.
+- **Stelle**: una per il minimo, due a metà strada, tre a ascensore pieno; si accendono una alla
+  volta sulle porte chiuse con un tono in salita, e il totale è sulla schermata finale.
+- **Festa per l'amico nuovo**: alla partenza dal piano 2 e dal 4 il transito dura 3,4 s e presenta
+  l'animale nuovo sotto un riflettore, con rimbalzo e fanfara.
+
+Più un rimbalzo di un terzo di secondo per l'animale appena salito. Vite, timer e punteggio sono
+rimasti quelli di prima. Spec completa in `docs/superpowers/specs/2026-09-14-piani-diversi-design.md`.
+
 ---
 
 ## Da valutare al prossimo playtest
@@ -63,3 +102,5 @@ secondo su telefono, tutti passati sullo splash: da spostare fuori dal primo fra
   vanno confermati da un bambino vero.
 - La soglia di 14 pixel che separa tocco e trascinamento, su dita piccole e schermi diversi.
 - Bilanciamento dei pezzi e frequenza delle forme, mai verificati con un pubblico reale.
+- Quantità di bagagli per piano e soglia delle due stelle: numeri a tavolino, da guardare in mano a
+  un bambino. Se il riflettore che copre le stelle al piano 3 confonde, spostare le stelle in alto.
