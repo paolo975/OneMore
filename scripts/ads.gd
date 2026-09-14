@@ -1,12 +1,17 @@
 extends Node
 
-# Ads through the Poing AdMob plugin. Where the native singleton is missing — tests,
-# Windows, the editor — every call is a no-op: the game never waits on an ad.
+# Ads through the Poing AdMob plugin. Where neither the native singleton nor the mock the plugin
+# ships for editor builds exists — the exported Windows build, a phone without the plugin — every
+# call is a no-op: the game never waits on an ad. The GMA Next-Gen SDK initialises asynchronously
+# and throws if asked to load before it has finished, so every load waits for its callback.
 # Unit ids come from res://ads.cfg; the App ID lives in project.godot under [admob].
 
 const BANNER_RESERVE = 90.0
 
 var enabled = false
+var initialized = false
+var banner_wanted = false
+var banner_loaded = false
 var config = {"test": true}
 var _ids = {}
 var _banner = null
@@ -22,7 +27,7 @@ func _ready() -> void:
 			"banner": str(cfg.get_value(section, "banner", "")),
 			"interstitial": str(cfg.get_value(section, "interstitial", "")),
 		}
-	enabled = Engine.has_singleton("PoingGodotAdMob") and unit("banner") != ""
+	enabled = has_plugin() and unit("banner") != ""
 	if not enabled:
 		return
 	# The audience is children: child-directed treatment, G-rated, hence non-personalised.
@@ -30,7 +35,20 @@ func _ready() -> void:
 	rules.tag_for_child_directed_treatment = RequestConfiguration.TagForChildDirectedTreatment.TRUE
 	rules.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_G
 	MobileAds.set_request_configuration(rules)
-	MobileAds.initialize()
+	var listener = OnInitializationCompleteListener.new()
+	listener.on_initialization_complete = _on_initialized
+	MobileAds.initialize(listener)
+
+# The native plugin on a phone, or the mock the plugin provides in editor builds.
+func has_plugin() -> bool:
+	return Engine.has_singleton("PoingGodotAdMob") or OS.has_feature("editor")
+
+func _on_initialized(_status) -> void:
+	initialized = true
+	print("AdMob: inizializzato")
+	preload_interstitial()
+	if banner_wanted:
+		show_banner()
 
 func unit(kind: String) -> String:
 	return str(_ids.get(kind, ""))
@@ -42,9 +60,23 @@ func banner_reserve() -> float:
 func show_banner() -> void:
 	if not enabled:
 		return
+	banner_wanted = true
+	if not initialized:
+		return
 	if _banner == null:
 		var size = AdSize.get_current_orientation_anchored_adaptive_banner_ad_size(AdSize.FULL_WIDTH)
 		_banner = AdView.new(unit("banner"), size, AdPosition.BOTTOM)
+		var listener = AdListener.new()
+		listener.on_ad_loaded = func() -> void:
+			banner_loaded = true
+			print("AdMob: banner caricato")
+		listener.on_ad_failed_to_load = func(error: LoadAdError) -> void:
+			print("AdMob: banner fallito codice %d: %s" % [error.code, error.message])
+			# Drop the empty view, so the next game asks again instead of showing nothing forever.
+			_banner.destroy()
+			_banner = null
+			banner_loaded = false
+		_banner.ad_listener = listener
 		_banner.load_ad(AdRequest.new())
 	else:
 		_banner.show()
@@ -54,15 +86,17 @@ func hide_banner() -> void:
 		_banner.hide()
 
 func preload_interstitial() -> void:
-	if not enabled or _interstitial != null or _loading:
+	if not enabled or not initialized or _interstitial != null or _loading:
 		return
 	_loading = true
 	var callback = InterstitialAdLoadCallback.new()
 	callback.on_ad_loaded = func(ad: InterstitialAd) -> void:
 		_interstitial = ad
 		_loading = false
-	callback.on_ad_failed_to_load = func(_error: LoadAdError) -> void:
+		print("AdMob: interstitial caricato")
+	callback.on_ad_failed_to_load = func(error: LoadAdError) -> void:
 		_loading = false
+		print("AdMob: interstitial fallito codice %d: %s" % [error.code, error.message])
 	InterstitialAdLoader.new().load(unit("interstitial"), AdRequest.new(), callback)
 
 # Returns true only if an ad actually went on screen; the caller never blocks on it.
@@ -78,5 +112,6 @@ func show_interstitial() -> bool:
 	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_error: AdError) -> void:
 		ad.destroy()
 		preload_interstitial()
+	print("AdMob: interstitial mostrato")
 	ad.show()
 	return true

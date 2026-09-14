@@ -237,9 +237,11 @@ func run() -> void:
 	if not ResourceLoader.exists("res://scripts/ads.gd") or game.get("ads") == null:
 		check(false,"the game carries an ads layer")
 	else:
-		check(game.ads.enabled == false,"ads stay disabled where the native plugin is absent")
-		check(game.ads.show_interstitial() == false,"an interstitial cannot be shown without the plugin")
-		check(game.ads.banner_reserve() == 0.0,"no space is reserved for a banner that cannot appear")
+		# In editor builds the plugin ships a mock, so the layer is on; on a phone without the plugin it stays off.
+		check(game.ads.enabled,"the ads layer runs on the plugin's editor mock where the native plugin is absent")
+		check(game.ads.get("initialized") == false and game.ads._banner == null and game.ads.get("banner_wanted") == true,"a banner asked for before the SDK is ready is remembered, not loaded")
+		check(game.ads.show_interstitial() == false,"an interstitial cannot be shown before it is loaded")
+		check(game.ads.banner_reserve() == 90.0,"the layout keeps a strip for the banner")
 		check(game.ads.config.get("test",false) == true,"the shipped config runs on Google test ids")
 		check(String(game.ads.unit("banner")).begins_with("ca-app-pub-3940256099942544/"),"the banner unit id is the official test one")
 		check(String(game.ads.unit("interstitial")).begins_with("ca-app-pub-3940256099942544/"),"the interstitial unit id is the official test one")
@@ -371,6 +373,18 @@ func run() -> void:
 		game.release_drag(game.GRID+Vector2(43,43))
 		check(game.occupied()==1 and game.pieces[0].has("born"),"a placed animal carries its boarding time")
 		check(not game.make_piece(0,0).has("born"),"animals in the queue have not boarded yet")
+	# The ads layer loads nothing until the SDK says it is ready; the editor mock answers in half a second.
+	if game.ads.get("initialized") == null:
+		check(false,"the ads layer waits for the SDK before loading")
+	else:
+		await create_timer(0.7).timeout
+		check(game.ads.initialized,"the ads layer hears the initialisation callback")
+		check(game.ads._banner != null,"the banner asked for before initialisation is created afterwards")
+		await create_timer(0.7).timeout
+		check(game.ads.banner_loaded,"the banner loads once the SDK is ready")
+		check(game.ads._interstitial != null,"the interstitial is preloaded by the initialisation callback")
+		check(game.ads.show_interstitial(),"a loaded interstitial goes on screen")
+		check(game.ads._interstitial == null,"a shown interstitial is consumed")
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)
