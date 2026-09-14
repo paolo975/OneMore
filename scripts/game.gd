@@ -321,6 +321,7 @@ func release_drag(pos: Vector2) -> void:
 	var cell = drag_cell()
 	if can_place(drag,cell):
 		drag.cell = cell
+		drag.born = elapsed
 		pieces.append(drag.duplicate(true))
 		if drag_source >= 0:
 			tray[drag_source] = make_piece(0 if drag_source == 2 else -1)
@@ -782,7 +783,21 @@ func _draw() -> void:
 	for item in luggage:
 		draw_luggage(item.kind, GRID+Vector2(item.cell)*CELL, CELL)
 	for p in pieces:
-		draw_person(p,GRID+Vector2(p.cell)*CELL,CELL)
+		var origin = GRID+Vector2(p.cell)*CELL
+		var unit = CELL
+		# A fresh arrival swells for a third of a second, around its own centre.
+		var age = elapsed - p.get("born", -10.0)
+		if age < 0.3:
+			# Not "scale": that would shadow Control.scale.
+			var swell = 1.0 + 0.12*sin(PI*age/0.3)
+			var span = Vector2.ONE
+			for c in p.cells:
+				span.x = maxf(span.x, c.x+1)
+				span.y = maxf(span.y, c.y+1)
+			var centre = origin + span*CELL*0.5
+			origin = centre + (origin-centre)*swell
+			unit = CELL*swell
+		draw_person(p,origin,unit)
 	if not drag.is_empty():
 		var c = drag_cell()
 		var valid = can_place(drag,c)

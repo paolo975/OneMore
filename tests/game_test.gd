@@ -364,6 +364,13 @@ func run() -> void:
 				game.depart()
 				check(game.newcomer==-1 and game.transit_length()==1.6,"leaving floor 1 announces nobody")
 				game._process(2)
+		# An animal that has just boarded remembers when, so it can bounce for a moment.
+		game.start_game()
+		game.tray[0] = game.make_piece(0,0)
+		game.press(Vector2(110,930))
+		game.release_drag(game.GRID+Vector2(43,43))
+		check(game.occupied()==1 and game.pieces[0].has("born"),"a placed animal carries its boarding time")
+		check(not game.make_piece(0,0).has("born"),"animals in the queue have not boarded yet")
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)
