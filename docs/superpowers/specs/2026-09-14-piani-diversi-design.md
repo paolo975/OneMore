@@ -74,11 +74,13 @@ Voto del piano, senza parole.
   basta che dichiari il suo `floor`.
 - `transit_length() -> float`: 3,4 s se `newcomer >= 0`, altrimenti 1,6 s (il valore di oggi).
   `_process` chiude il transito a `transit_time > transit_length()`.
-- Da `transit_time >= 1.3`, sopra le porte chiuse: riflettore `CREAM` di raggio 175 in `(360, 545)`
-  con bordo `INK`; l'animale con `draw_person({"cells": SHAPES[4], "person": newcomer}, origine, 110)`
-  — un 2×2 da 220 px — con origine `(250, 445 - rimbalzo)` e
-  `rimbalzo = abs(sin((transit_time - 1.3) * 6)) * 30`; sopra, `toast_newcomer` a y 400 (26 px);
-  sotto, il nome dell'animale a y 705 (28 px).
+- Da `transit_time >= 1.3`, sopra le porte chiuse: riflettore `CREAM` di raggio 160 in `(360, 545)`
+  con bordo `INK` (385-705 in verticale); l'animale con
+  `draw_person({"cells": SHAPES[4], "person": newcomer}, origine, 110)` — un 2×2 da 220 px — con
+  origine `(250, 445 - rimbalzo)` e `rimbalzo = abs(sin((transit_time - 1.3) * 6)) * 30`; sopra il
+  cerchio, `toast_newcomer` a y 372 (26 px); sotto il cerchio, il nome dell'animale a y 745 (28 px),
+  dentro il riquadro della griglia (317-767). Raggio 175 e testi a 400/705 si sovrapponevano al bordo:
+  corretto il 14/09 guardando gli screenshot per lo store.
 - Fanfara: tre toni di 0,12 s a 660 / 880 / 1320 Hz quando `transit_time` supera 1,3 / 1,5 / 1,7.
 - Le stelle (§3) sono già tutte accese a 1,0 s: nessuna sovrapposizione.
 - Stringa nuova `toast_newcomer`: "Nuovo amico!" / "New friend!".

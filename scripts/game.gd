@@ -519,6 +519,13 @@ func heart(pos: Vector2, filled: bool) -> void:
 	draw_circle(pos+Vector2(9,-5),12,color)
 	draw_colored_polygon(PackedVector2Array([pos+Vector2(-20,0),pos+Vector2(20,0),pos+Vector2(0,24)]),color)
 
+# A cream tag behind a line of text: the door seam runs right through the lift, and a caption
+# drawn straight on the panels would be cut in two.
+func plate(text: String, y: float, size_px: int) -> void:
+	var w = font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,size_px).x + 44
+	box(Rect2(360-w/2, y-size_px*1.0, w, size_px*1.45), CREAM, 14, INK, 2)
+	centered(text, y, size_px)
+
 func star_points(centre: Vector2, radius: float) -> PackedVector2Array:
 	var points = PackedVector2Array()
 	for k in 10:
@@ -538,11 +545,11 @@ func draw_transit() -> void:
 	# The newcomer under a spotlight, bouncing, with the fanfare: the stars had their moment already.
 	if newcomer >= 0 and transit_time >= FANFARE_TIMES[0]:
 		var bounce = absf(sin((transit_time-FANFARE_TIMES[0])*6))*30
-		draw_circle(Vector2(360,545), 175, CREAM)
-		draw_arc(Vector2(360,545), 175, 0, TAU, 64, INK, 3, true)
-		centered(t("toast_newcomer"), 400, 26)
+		draw_circle(Vector2(360,545), 160, CREAM)
+		draw_arc(Vector2(360,545), 160, 0, TAU, 64, INK, 3, true)
+		plate(t("toast_newcomer"), 372, 26)
 		draw_person({"cells":SHAPES[4], "person":newcomer, "cell":Vector2i.ZERO}, Vector2(250,445-bounce), 110)
-		centered(t(ANIMALS[newcomer].name), 705, 28)
+		plate(t(ANIMALS[newcomer].name), 745, 28)
 
 # Three things people leave in lifts, in the same flat style as the animals.
 func draw_luggage(kind: int, at: Vector2, unit: float) -> void:
