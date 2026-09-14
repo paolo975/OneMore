@@ -17,6 +17,7 @@ var _ids = {}
 var _banner = null
 var _interstitial = null
 var _loading = false
+var _shown = null
 
 func _ready() -> void:
 	var cfg = ConfigFile.new()
@@ -104,14 +105,33 @@ func show_interstitial() -> bool:
 	if not enabled or _interstitial == null:
 		preload_interstitial()
 		return false
-	var ad = _interstitial
+	_shown = _interstitial
 	_interstitial = null
-	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = func() -> void:
-		ad.destroy()
-		preload_interstitial()
-	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_error: AdError) -> void:
-		ad.destroy()
-		preload_interstitial()
+	# Bound methods, not lambdas capturing the ad: a lambda stored inside the ad that
+	# captures the ad is a reference cycle nothing would ever break.
+	_shown.full_screen_content_callback.on_ad_dismissed_full_screen_content = _after_interstitial
+	_shown.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = _after_interstitial_error
 	print("AdMob: interstitial mostrato")
-	ad.show()
+	_shown.show()
 	return true
+
+func _after_interstitial() -> void:
+	if _shown != null:
+		_shown.destroy()
+		_shown = null
+	preload_interstitial()
+
+func _after_interstitial_error(_error: AdError) -> void:
+	_after_interstitial()
+
+func _exit_tree() -> void:
+	if _banner != null:
+		_banner.destroy()
+		_banner = null
+	if _interstitial != null:
+		_interstitial.destroy()
+		_interstitial = null
+	if _shown != null:
+		_shown.full_screen_content_callback = FullScreenContentCallback.new()
+		_shown.destroy()
+		_shown = null

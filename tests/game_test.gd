@@ -385,6 +385,8 @@ func run() -> void:
 		check(game.ads._interstitial != null,"the interstitial is preloaded by the initialisation callback")
 		check(game.ads.show_interstitial(),"a loaded interstitial goes on screen")
 		check(game.ads._interstitial == null,"a shown interstitial is consumed")
+		game.free()
+		await process_frame
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)
