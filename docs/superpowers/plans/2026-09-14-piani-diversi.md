@@ -1126,3 +1126,130 @@ Expected in `artifacts/logcat.txt` (Bash: `grep -a "AdMob:" artifacts/logcat.txt
 **Scostamento dalla spec.** La stella sulla schermata finale è a `(300, 658)` con raggio 14 e testo a 22 px, non `(300, 662)` raggio 16 a 24 px: con 16 di raggio sfiorava la riga del record a y 692. La spec è stata aggiornata nello stesso commit di questo piano.
 
 **Coerenza dei nomi.** `luggage_count`, `place_luggage`, `capacity`, `blocked`, `draw_luggage`, `stars_for`, `round_stars`, `run_stars`, `cues_played`, `transit_cues`, `transit_length`, `star_points`, `draw_transit`, `newcomer`, `born`, `initialized`, `banner_wanted`, `banner_loaded`, `has_plugin` sono usati con lo stesso nome in test e implementazione. `STAR_TIMES`/`STAR_TONES`/`FANFARE_TIMES`/`FANFARE_TONES` sono array paralleli di tre elementi.
+
+---
+
+### Task 9: `ads.cfg` non veniva esportato
+
+Aggiunto il 14/09/2026 durante il Task 8. Sull'emulatore il plugin nativo si registra (`GodotPluginRegistry: Completed initialization for Godot plugin PoingGodotAdMob`) ma nessuna riga `AdMob:` compare, nemmeno `inizializzato`, e la fascia del banner non è riservata (`lift()` = 0): `enabled` è falso sul dispositivo. Verifica con `unzip -l`: `assets/ads.cfg` manca in tutti gli APK mai costruiti (v2, telefono, odierno) e nell'`.exe`; `addons/admob/plugin.cfg` c'è solo perché l'exporter del plugin lo aggiunge con `add_file`. Causa: `export_filter="all_resources"` esporta solo le risorse riconosciute da Godot, e un `.cfg` non lo è finché non compare in `include_filter`. Con `ads.cfg` assente `cfg.load` fallisce, gli unit ID restano vuoti e `unit("banner") != ""` è falso. È la causa primaria dell'assenza di pubblicità; l'inizializzazione asincrona (Task 6) è un secondo difetto reale, latente dietro il primo.
+
+**Files:**
+- Modify: `export_presets.cfg` (`include_filter` di `preset.0` e `preset.1`)
+- Modify: `scripts/ads.gd` (`_ready`: stampa se il file manca)
+- Modify: `tests/game_test.gd` (test di guardia sui preset, a un tab, subito prima del blocco asincrono della pubblicità)
+- Modify: `README.md`, `MIGLIORIE.md`, `docs/superpowers/specs/2026-09-14-piani-diversi-design.md` (diagnosi corretta)
+- Produce: `artifacts/AncoraUno-debug.apk` con `assets/ads.cfg` dentro; `artifacts/logcat.txt` con le quattro righe `AdMob:`
+
+**Interfaces:**
+- Consumes: `ads.enabled`, `unit("banner")`, le stampe `AdMob:` del Task 6; `tools/build.ps1`, `tools/logcat.ps1`; emulatore `emulator-5554` con override `wm size 720x1280` (coordinate schermo = coordinate canvas: START (360,1070), carta 0 (142,941), casella (0,0) (188,368)).
+
+- [ ] **Step 1: Test di guardia (fallirà)**
+
+In `tests/game_test.gd`, a UN tab (livello di `run()`), subito prima del commento `# The ads layer loads nothing until the SDK says it is ready`:
+
+```gdscript
+	# ads.cfg is not a Godot resource: with export_filter "all_resources" it ships only if the
+	# presets name it. Left out, unit ids are empty and the layer stays silently off on devices.
+	var presets = ConfigFile.new()
+	check(presets.load("res://export_presets.cfg")==OK,"the export presets are readable")
+	for section in ["preset.0","preset.1"]:
+		check("ads.cfg" in str(presets.get_value(section,"include_filter","")),"%s exports ads.cfg" % section)
+```
+
+- [ ] **Step 2: Eseguire i test e vedere il fallimento**
+
+Run: `powershell -ExecutionPolicy Bypass -File tools/test.ps1`
+Expected: `FAIL: preset.0 exports ads.cfg` e `FAIL: preset.1 exports ads.cfg`; `2 CHECKS FAILED, 221 passed`.
+
+- [ ] **Step 3: Includere il file nell'export**
+
+In `export_presets.cfg` sostituire entrambe le righe `include_filter=""` con `include_filter="ads.cfg"`.
+
+- [ ] **Step 4: Fallimento rumoroso**
+
+In `scripts/ads.gd`, `_ready()`, aggiungere il ramo `else` al `if cfg.load("res://ads.cfg") == OK:`, subito dopo la chiusura del dizionario `_ids`:
+
+```gdscript
+	else:
+		# Loud, not silent: a config left out of the export is exactly what switched the ads off once.
+		print("AdMob: ads.cfg non trovato, pubblicità spenta")
+```
+
+- [ ] **Step 5: Eseguire i test e vederli passare**
+
+Run: `powershell -ExecutionPolicy Bypass -File tools/test.ps1`
+Expected: `ALL 223 CHECKS PASSED` (poi le due righe di leak note).
+
+- [ ] **Step 6: Documentazione corretta**
+
+`README.md`, sezione "Pubblicità (AdMob)": nel punto che inizia con "L'SDK Next-Gen di AdMob si inizializza in modo **asincrono**" anteporre la frase:
+
+```
+`ads.cfg` non è una risorsa Godot: con `export_filter="all_resources"` finisce nell'APK solo perché `include_filter` lo nomina — senza, gli unit ID restano vuoti e il gioco spegne la pubblicità in silenzio (è successo: nessun APK fino al 14/09 lo conteneva; ora un test lo pretende e `ads.gd` lo dice nel log).
+```
+
+`MIGLIORIE.md`, §8: sostituire il paragrafo che inizia con "L'APK del 13/09 conteneva l'SDK" con:
+
+```
+L'APK del 13/09 conteneva l'SDK (cinque `classes.dex`, App ID di test nel manifest, tutti i
+singleton `PoingGodotAdMob*` inizializzati nel log) ma né il banner né l'interstitial si vedevano
+mai. Due cause, una dietro l'altra. La prima, trovata solo il 14/09 sull'emulatore: **`ads.cfg` non
+veniva esportato**. Con `export_filter="all_resources"` Godot mette nell'APK solo le risorse che
+riconosce, e un `.cfg` non lo è finché `include_filter` non lo nomina (il plugin aggiunge il proprio
+`plugin.cfg` a mano per lo stesso motivo). Senza il file gli unit ID restano vuoti e `ads.gd` spegne
+tutto in silenzio: nessun APK costruito fino ad allora lo conteneva. La seconda, latente dietro la
+prima, la dice la guida di migrazione del plugin: con l'SDK Next-Gen `MobileAds.initialize()` è
+asincrono e caricare prima del callback **solleva un'eccezione**; `ads.gd` caricava appena si toccava
+ENTRA IN ASCENSORE.
+```
+
+e sostituire il paragrafo che inizia con "Correzione: ogni load aspetta" con:
+
+```
+Correzione: `include_filter="ads.cfg"` nei due preset, un test che lo pretende e una riga
+`AdMob: ads.cfg non trovato` nel log se dovesse mancare di nuovo; ogni load aspetta
+`OnInitializationCompleteListener`; un banner fallito viene distrutto e ritentato alla partita dopo;
+ogni esito è stampato con prefisso `AdMob:` così `tools/logcat.ps1` lo cattura. In editor il layer
+gira sul mock del plugin e la sequenza è coperta dai test headless.
+```
+
+`docs/superpowers/specs/2026-09-14-piani-diversi-design.md`, §6, subito dopo la riga `### Diagnosi`, inserire:
+
+```
+**Aggiornamento 14/09, dopo la verifica sull'emulatore.** La causa primaria è un'altra: `ads.cfg`
+non veniva esportato (`export_filter="all_resources"` esclude i file che non sono risorse Godot;
+`include_filter` era vuoto), quindi sul dispositivo `unit("banner")` era vuoto ed `enabled` falso.
+L'inizializzazione asincrona descritta sotto è reale e resta corretta, ma sarebbe emersa solo dopo.
+Correzione e test nel Task 9 del piano.
+```
+
+- [ ] **Step 7: Commit**
+
+Stage `export_presets.cfg scripts/ads.gd tests/game_test.gd README.md MIGLIORIE.md docs/superpowers/specs/2026-09-14-piani-diversi-design.md` (non `project.godot`). Messaggio:
+
+```
+Esporta ads.cfg: era la vera causa della pubblicità assente
+
+Con export_filter "all_resources" un .cfg finisce nell'APK solo se include_filter
+lo nomina: nessuna build lo conteneva, gli unit ID restavano vuoti e ads.gd
+spegneva tutto in silenzio. Test di guardia sui preset, riga di log se il file
+manca, diagnosi corretta in README, MIGLIORIE e spec.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+```
+
+- [ ] **Step 8: Rebuild e controllo del pacchetto**
+
+Run: `powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Target Android` (timeout 600 s).
+Expected: `[ DONE ] export`; poi `unzip -l artifacts/AncoraUno-debug.apk | grep ads.cfg` → `assets/ads.cfg`.
+
+- [ ] **Step 9: Installare e registrare**
+
+`adb -s emulator-5554 install -r artifacts/AncoraUno-debug.apk` → `Success`. Poi `tools/logcat.ps1 -Seconds 150` in background; dopo 12 s `adb -s emulator-5554 shell input tap 360 1070`; dopo 3 s screenshot `artifacts/emulatore-partita.png`; `input swipe 142 941 188 368 500`; screenshot `artifacts/emulatore-piazzato.png`; una sola attesa di ~125 s.
+Expected in `artifacts/logcat.txt`: `AdMob: inizializzato`, `AdMob: banner caricato`, `AdMob: interstitial caricato`, `AdMob: interstitial mostrato`. Nello screenshot le carte in coda alte 150 unità (866-1016) e in basso il banner *Test Ad* o la fascia libera.
+
+- [ ] **Step 10: Annotare l'esito**
+
+Se le quattro righe ci sono: in coda a `MIGLIORIE.md` §8, dopo il paragrafo "Resta un avviso innocuo", la riga
+`Verificato sull'emulatore x86_64 (Android 15) il 14/09/2026: le quattro righe `AdMob:` compaiono nel logcat e il banner di test è visibile in partita; la prova sul telefono ARM resta da fare.`
+(adattare "il banner di test è visibile" a ciò che mostra lo screenshot). Commit solo di `MIGLIORIE.md`: `Annota la verifica della pubblicità sull'emulatore` + riga Co-Authored-By.
