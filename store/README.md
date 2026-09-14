@@ -35,7 +35,14 @@ Per cambiare un momento ritratto: `setup()` in `tools/store_assets.gd`.
 Non sono asset, ma senza di questi la scheda non passa in revisione:
 
 1. **Privacy policy** pubblicata a un URL raggiungibile (obbligatoria per chi dichiara un pubblico
-   di bambini e per chi usa AdMob).
+   di bambini e per chi usa AdMob). Il testo, bilingue, è `docs/privacy.html`: il gioco non tratta
+   dati personali, e la pagina descrive onestamente ciò che l'SDK AdMob può trattare per servire
+   annunci non personalizzati. Per pubblicarla: su GitHub, *Settings → Pages → Source: Deploy from a
+   branch → `main` / `/docs`*; l'URL diventa `https://paolo975.github.io/OneMore/privacy.html` (il
+   file `docs/.nojekyll` evita che GitHub trasformi i documenti di progetto in pagine). Prima di
+   inviare in revisione sostituire il segnaposto dell'e-mail di contatto, in entrambe le lingue, con
+   l'indirizzo che si vuole rendere pubblico. Lo stesso URL va nella scheda e nella sezione
+   *Sicurezza dei dati*.
 2. **Pubblico di destinazione e contenuti**: dichiarare la fascia 5 e meno / 6-8; il gioco entra nel
    programma *Progettato per le famiglie* e deve rispettarne la policy (AdMob è un SDK certificato;
    gli annunci sono già child-directed e con rating G nel codice — vedi `MONETIZZAZIONE.md`).
