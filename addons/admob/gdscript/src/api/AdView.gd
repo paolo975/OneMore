@@ -59,7 +59,7 @@ func _init(ad_unit_id: String, ad_size: AdSize, ad_position: AdPosition) -> void
 
 func load_ad(ad_request: AdRequest) -> void:
 	if _plugin:
-		_plugin.load_ad(_uid, ad_request.convert_to_dictionary(), ad_request.keywords)
+		_plugin.load_ad(_uid, ad_request.convert_to_dictionary(), PackedStringArray(ad_request.keywords))
 
 
 func destroy() -> void:

@@ -379,6 +379,13 @@ func run() -> void:
 	check(presets.load("res://export_presets.cfg")==OK,"the export presets are readable")
 	for section in ["preset.0","preset.1"]:
 		check("ads.cfg" in str(presets.get_value(section,"include_filter","")),"%s exports ads.cfg" % section)
+	# Godot 4.6 rejects a typed Array[String] where the native plugin declares String[]: the three
+	# wrapper calls this game uses must hand over a PackedStringArray, or no ad ever loads on Android.
+	for pair in [
+			["res://addons/admob/gdscript/src/api/AdView.gd", "PackedStringArray(ad_request.keywords))"],
+			["res://addons/admob/gdscript/src/api/InterstitialAdLoader.gd", "PackedStringArray(ad_request.keywords), _uid)"],
+			["res://addons/admob/gdscript/src/api/MobileAds.gd", "PackedStringArray(request_configuration.test_device_ids)"]]:
+		check(FileAccess.get_file_as_string(pair[0]).contains(pair[1]),"%s hands the native plugin a PackedStringArray" % pair[0].get_file())
 	# The ads layer loads nothing until the SDK says it is ready; the editor mock answers in half a second.
 	if game.ads.get("initialized") == null:
 		check(false,"the ads layer waits for the SDK before loading")

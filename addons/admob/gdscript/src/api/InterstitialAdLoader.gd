@@ -51,7 +51,7 @@ func load(
 			CONNECT_DEFERRED
 		)
 		reference()
-		_plugin.load(ad_unit_id, ad_request.convert_to_dictionary(), ad_request.keywords, _uid)
+		_plugin.load(ad_unit_id, ad_request.convert_to_dictionary(), PackedStringArray(ad_request.keywords), _uid)
 
 
 func _on_interstitial_ad_loaded(uid: int) -> void:

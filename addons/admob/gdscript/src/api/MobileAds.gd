@@ -45,8 +45,9 @@ static func initialize(
 static func set_request_configuration(request_configuration: RequestConfiguration) -> void:
 	if _plugin:
 		#test_device_ids needs to be passed separarely because Dictionary can't serialize Arrays
+		# Godot 4.6 rejects Array[String] for a Java String[]: hand over a PackedStringArray.
 		_plugin.set_request_configuration(
-			request_configuration.convert_to_dictionary(), request_configuration.test_device_ids
+			request_configuration.convert_to_dictionary(), PackedStringArray(request_configuration.test_device_ids)
 		)
 
 
