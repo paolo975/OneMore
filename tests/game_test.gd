@@ -331,6 +331,39 @@ func run() -> void:
 			game.depart()
 			check(game.round_stars==0 and game.run_stars==1 and game.lives==2,"a failed floor earns nothing and costs a life")
 			game._process(2)
+			# The floor that brings a new animal celebrates it with a longer transit.
+			if not game.has_method("transit_length") or game.get("newcomer") == null:
+				check(false,"the game announces a new animal")
+			else:
+				game.start_game()
+				check(game.transit_length()==1.6,"an ordinary transit lasts 1.6 seconds")
+				game.floor_number = 2
+				game.new_round()
+				for y in 5:
+					for x in 3:
+						var cell = Vector2i(x,y)
+						if game.blocked(cell):
+							continue
+						var p = game.make_piece(0,0)
+						p.cell = cell
+						game.pieces.append(p)
+				game.depart()
+				check(game.transit_success and game.newcomer==5,"leaving floor 2 announces the sixth animal")
+				check(game.transit_length()==3.4,"the announcement stretches the transit")
+				game._process(2)
+				check(game.state=="transit","two seconds in, the newcomer is still on stage")
+				game._process(1.5)
+				check(game.state=="playing" and game.floor_number==3 and game.newcomer==-1,"the lift then opens on floor 3 with the stage cleared")
+				game.start_game()
+				game.pieces.clear()
+				for y in 2:
+					for x in 5:
+						var p = game.make_piece(0,0)
+						p.cell = Vector2i(x,y)
+						game.pieces.append(p)
+				game.depart()
+				check(game.newcomer==-1 and game.transit_length()==1.6,"leaving floor 1 announces nobody")
+				game._process(2)
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)

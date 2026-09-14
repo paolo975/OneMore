@@ -28,6 +28,7 @@ const TABLE = {
 	"toast_nofit": {"it":"Qui non ci sta. Toccalo per girarlo!", "en":"It won't fit here. Tap it to turn it!"},
 	"toast_aboard": {"it":"+%d · Tutti a bordo!", "en":"+%d · All aboard!"},
 	"toast_fail": {"it":"Pochi a bordo! Una vita in meno.", "en":"Too few aboard! One life lost."},
+	"toast_newcomer": {"it":"Nuovo amico!", "en":"New friend!"},
 	"pause_title": {"it":"UN RESPIRO.", "en":"TAKE A BREATH."},
 	"pause_line1": {"it":"L'ascensore ti aspetta.", "en":"The lift is waiting for you."},
 	"pause_line2": {"it":"Il tempo è in pausa.", "en":"Time is paused."},

@@ -69,10 +69,15 @@ const GOLD = Color("efc66e")
 const GREY = Color("d7cec1")
 const STAR_TIMES = [0.4, 0.7, 1.0]
 const STAR_TONES = [700.0, 900.0, 1100.0]
+const TRANSIT_SHORT = 1.6
+const TRANSIT_LONG = 3.4
+const FANFARE_TIMES = [1.3, 1.5, 1.7]
+const FANFARE_TONES = [660.0, 880.0, 1320.0]
 var luggage: Array = []
 var round_stars = 0
 var run_stars = 0
 var cues_played = 0
+var newcomer = -1
 
 func t(key: String) -> String:
 	return Strings.text(key, lang)
@@ -150,12 +155,20 @@ func stars_for(count: int) -> int:
 		return 2
 	return 1
 
-# Sound cues of the current transit, as [time, frequency]: one rising tone per star lit.
+# Sound cues of the current transit, as [time, frequency]: one rising tone per star lit,
+# then a three-note fanfare when a new animal steps on stage.
 func transit_cues() -> Array:
 	var cues: Array = []
 	for k in round_stars:
 		cues.append([STAR_TIMES[k], STAR_TONES[k]])
+	if newcomer >= 0:
+		for k in 3:
+			cues.append([FANFARE_TIMES[k], FANFARE_TONES[k]])
 	return cues
+
+# The transit stretches when there is a new animal to introduce.
+func transit_length() -> float:
+	return TRANSIT_LONG if newcomer >= 0 else TRANSIT_SHORT
 
 func blocked(cell: Vector2i) -> bool:
 	for item in luggage:
@@ -188,6 +201,7 @@ func lift() -> float:
 
 func new_round() -> void:
 	state = "playing"
+	newcomer = -1
 	pieces.clear()
 	drag.clear()
 	tray = [make_piece(3), make_piece(1), make_piece(0)]
@@ -337,6 +351,10 @@ func depart() -> void:
 		run_stars += round_stars
 		toast = t("toast_aboard") % bonus
 		tone(880,0.22)
+		# The animal whose floor is the next one steps on stage during the transit.
+		for i in ANIMALS.size():
+			if ANIMALS[i].floor == floor_number + 1:
+				newcomer = i
 		for i in 15*round_stars:
 			confetti.append({"pos":Vector2(rng.randf_range(80,640),rng.randf_range(270,700)),"vel":Vector2(rng.randf_range(-70,70),rng.randf_range(-160,-30)),"life":1.5,"color":COLORS[i%5]})
 	else:
@@ -393,7 +411,7 @@ func _process(delta: float) -> void:
 		while cues_played < cues.size() and transit_time >= cues[cues_played][0]:
 			tone(cues[cues_played][1],0.1)
 			cues_played += 1
-		if transit_time > 1.6:
+		if transit_time > transit_length():
 			if lives <= 0:
 				state = "over"
 				ads.show_interstitial()
@@ -515,6 +533,14 @@ func draw_transit() -> void:
 		var rim = star_points(centre, 55)
 		rim.append(rim[0])
 		draw_polyline(rim, INK, 3, true)
+	# The newcomer under a spotlight, bouncing, with the fanfare: the stars had their moment already.
+	if newcomer >= 0 and transit_time >= FANFARE_TIMES[0]:
+		var bounce = absf(sin((transit_time-FANFARE_TIMES[0])*6))*30
+		draw_circle(Vector2(360,545), 175, CREAM)
+		draw_arc(Vector2(360,545), 175, 0, TAU, 64, INK, 3, true)
+		centered(t("toast_newcomer"), 400, 26)
+		draw_person({"cells":SHAPES[4], "person":newcomer, "cell":Vector2i.ZERO}, Vector2(250,445-bounce), 110)
+		centered(t(ANIMALS[newcomer].name), 705, 28)
 
 # Three things people leave in lifts, in the same flat style as the animals.
 func draw_luggage(kind: int, at: Vector2, unit: float) -> void:
