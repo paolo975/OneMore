@@ -306,6 +306,31 @@ func run() -> void:
 			for i in 400:
 				biggest = maxi(biggest, game.SHAPES.find(game.make_piece().cells))
 			check(biggest==pair[1],"floor %d deals shapes up to index %d" % [pair[0],pair[1]])
+		# Stars: one for the minimum, two half way to full, three for a full lift.
+		if not game.has_method("stars_for") or game.get("run_stars") == null:
+			check(false,"the game rates every floor with stars")
+		else:
+			game.floor_number = 1
+			game.new_round()
+			check(game.target==10 and game.capacity()==25,"floor 1 asks for 10 of 25")
+			check(game.stars_for(9)==0 and game.stars_for(10)==1 and game.stars_for(16)==1,"the minimum earns one star")
+			check(game.stars_for(17)==2 and game.stars_for(24)==2,"half way between minimum and full earns two")
+			check(game.stars_for(25)==3,"a full lift earns three")
+			game.start_game()
+			check(game.run_stars==0,"a new game starts with no stars")
+			for y in 2:
+				for x in 5:
+					var p = game.make_piece(0,1)
+					p.cell = Vector2i(x,y)
+					game.pieces.append(p)
+			game.confetti.clear()
+			game.depart()
+			check(game.round_stars==1 and game.run_stars==1,"ten animals earn one star")
+			check(game.confetti.size()==15,"confetti scale with the stars")
+			game._process(2)
+			game.depart()
+			check(game.round_stars==0 and game.run_stars==1 and game.lives==2,"a failed floor earns nothing and costs a life")
+			game._process(2)
 	if failures > 0:
 		print("%d CHECKS FAILED, %d passed" % [failures, checks])
 		quit(1)

@@ -67,7 +67,12 @@ var last_tick = -1
 const LUGGAGE_KINDS = 3
 const GOLD = Color("efc66e")
 const GREY = Color("d7cec1")
+const STAR_TIMES = [0.4, 0.7, 1.0]
+const STAR_TONES = [700.0, 900.0, 1100.0]
 var luggage: Array = []
+var round_stars = 0
+var run_stars = 0
+var cues_played = 0
 
 func t(key: String) -> String:
 	return Strings.text(key, lang)
@@ -135,6 +140,23 @@ func place_luggage() -> void:
 func capacity() -> int:
 	return SIDE*SIDE - luggage.size()
 
+# The floor's rating: the minimum is one star, half way to full is two, a full lift is three.
+func stars_for(count: int) -> int:
+	if count < target:
+		return 0
+	if count >= capacity():
+		return 3
+	if count >= target + (capacity() - target) / 2:
+		return 2
+	return 1
+
+# Sound cues of the current transit, as [time, frequency]: one rising tone per star lit.
+func transit_cues() -> Array:
+	var cues: Array = []
+	for k in round_stars:
+		cues.append([STAR_TIMES[k], STAR_TONES[k]])
+	return cues
+
 func blocked(cell: Vector2i) -> bool:
 	for item in luggage:
 		if item.cell == cell:
@@ -155,6 +177,7 @@ func start_game() -> void:
 	score = 0
 	lives = 3
 	floor_number = 1
+	run_stars = 0
 	new_round()
 	ads.show_banner()
 	ads.preload_interstitial()
@@ -306,12 +329,15 @@ func depart() -> void:
 		return
 	drag.clear()
 	transit_success = occupied() >= target
+	round_stars = stars_for(occupied())
+	cues_played = 0
 	if transit_success:
 		var bonus = occupied()*10 + int(time_left)*2
 		score += bonus
+		run_stars += round_stars
 		toast = t("toast_aboard") % bonus
 		tone(880,0.22)
-		for i in 36:
+		for i in 15*round_stars:
 			confetti.append({"pos":Vector2(rng.randf_range(80,640),rng.randf_range(270,700)),"vel":Vector2(rng.randf_range(-70,70),rng.randf_range(-160,-30)),"life":1.5,"color":COLORS[i%5]})
 	else:
 		lives -= 1
@@ -363,6 +389,10 @@ func _process(delta: float) -> void:
 	if state == "transit":
 		transit_time += delta
 		door = lerpf(door_at_depart,1.0,clampf(transit_time*2,0,1))
+		var cues = transit_cues()
+		while cues_played < cues.size() and transit_time >= cues[cues_played][0]:
+			tone(cues[cues_played][1],0.1)
+			cues_played += 1
 		if transit_time > 1.6:
 			if lives <= 0:
 				state = "over"
@@ -468,6 +498,23 @@ func heart(pos: Vector2, filled: bool) -> void:
 	draw_circle(pos+Vector2(-9,-5),12,color)
 	draw_circle(pos+Vector2(9,-5),12,color)
 	draw_colored_polygon(PackedVector2Array([pos+Vector2(-20,0),pos+Vector2(20,0),pos+Vector2(0,24)]),color)
+
+func star_points(centre: Vector2, radius: float) -> PackedVector2Array:
+	var points = PackedVector2Array()
+	for k in 10:
+		var ang = -PI/2 + k*PI/5
+		points.append(centre+Vector2(cos(ang),sin(ang))*(radius if k % 2 == 0 else radius*0.45))
+	return points
+
+# What the closed doors show while the lift moves: three star slots, the earned ones lighting up in turn.
+func draw_transit() -> void:
+	for k in 3:
+		var centre = Vector2(360+(k-1)*130, 540)
+		var lit = k < round_stars and transit_time >= STAR_TIMES[k]
+		draw_colored_polygon(star_points(centre, 55), GOLD if lit else GREY)
+		var rim = star_points(centre, 55)
+		rim.append(rim[0])
+		draw_polyline(rim, INK, 3, true)
 
 # Three things people leave in lifts, in the same flat style as the animals.
 func draw_luggage(kind: int, at: Vector2, unit: float) -> void:
@@ -727,6 +774,8 @@ func _draw() -> void:
 		box(Rect2(GRID+Vector2(430-dw,0),Vector2(dw,430)),panel,3,edge,2)
 		if door >= 1.0:
 			draw_line(Vector2(355,360),Vector2(355,715),INK,3)
+	if state == "transit":
+		draw_transit()
 	# Timer and explicit capacity goal.
 	box(Rect2(49,793,622,14),Color("e1d6c6"),7)
 	box(Rect2(49,793,622*maxf(0.001,time_left/time_limit),14),CORAL if time_left<8 else MINT,7)
@@ -764,6 +813,8 @@ func _draw() -> void:
 			centered(t("over_title"),480,39)
 			centered(str(score),587,80,CORAL)
 			centered(t("over_floor") % floor_number,631,23)
+			draw_colored_polygon(star_points(Vector2(300,658),14),GOLD)
+			label_at("× %d" % run_stars,Vector2(322,666),22)
 			centered(t("over_best") % best,692,29)
 			centered(t("over_again_q"),752,25)
 			button(Rect2(110,810,500,90),t("over_again"))

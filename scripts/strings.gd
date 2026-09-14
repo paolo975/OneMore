@@ -21,7 +21,7 @@ const TABLE = {
 	"hud_cells": {"it":"CELLE %d / MIN %d", "en":"CELLS %d / MIN %d"},
 	"hud_ok": {"it":"OK!", "en":"OK!"},
 	"hud_hint": {"it":"TOCCA per girarlo · TRASCINA per farlo salire", "en":"TAP to turn · DRAG to board"},
-	"hud_goal_done": {"it":"MINIMO RAGGIUNTO! Ogni animale in più vale punti.", "en":"MINIMUM REACHED! Every extra animal scores."},
+	"hud_goal_done": {"it":"MINIMO RAGGIUNTO! Riempi tutto per tre stelle.", "en":"MINIMUM REACHED! Fill it all for three stars."},
 	"hud_goal_todo": {"it":"Servono almeno %d caselle prima che le porte si chiudano", "en":"Fill at least %d cells before the doors close"},
 	"toast_closing": {"it":"Le porte si chiudono!", "en":"The doors are closing!"},
 	"toast_goal": {"it":"Obiettivo raggiunto! Ancora uno?", "en":"Goal reached! One more?"},
