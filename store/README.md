@@ -51,5 +51,7 @@ Non sono asset, ma senza di questi la scheda non passa in revisione:
    diagnostica per servire annunci; il gioco in sé non raccoglie nulla e non ha account.
 5. **Annunci**: spuntare «l'app contiene annunci».
 6. Categoria consigliata: *Puzzle* (o *Educativi*); e-mail di contatto dello sviluppatore.
-7. La build da caricare è la **release** firmata (`--export-release`, keystore di rilascio ancora da
-   creare): solo lei usa gli unit ID di produzione di `ads.cfg`.
+7. La build da caricare è la **release** firmata: `tools/build.ps1 -Target Android -Release` scrive
+   `artifacts/AncoraUno-release.apk` firmata con la chiave in `keystore/` (fuori da Git: farne una
+   copia di sicurezza). Solo lei usa gli unit ID di produzione di `ads.cfg`. Il pacchetto è
+   `com.neomobile.onemore` e non si può più cambiare dopo la pubblicazione.

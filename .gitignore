@@ -2,3 +2,4 @@
 artifacts/
 *.tmp
 android/build/
+keystore/

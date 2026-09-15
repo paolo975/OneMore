@@ -29,9 +29,9 @@ produzione è **automatica per tipo di build** (`OS.is_debug_build()` in `script
 Gli ID di test di Google mostrano annunci veri con la scritta *Test Ad*, non generano ricavi e non
 violano le policy. **Un annuncio di produzione mostrato sul proprio telefono è traffico non valido**
 e AdMob sospende l'account: per questo la build di debug non può usarli, qualunque cosa dica il
-file, e un test lo verifica. La build release (`--export-release`, keystore di rilascio ancora da
-creare) è l'unica che mostra annunci veri: provarla solo su un dispositivo registrato come *test
-device* nella console AdMob.
+file, e un test lo verifica. La build release (`tools/build.ps1 -Target Android -Release`, firmata
+con la chiave in `keystore/`) è l'unica che mostra annunci veri: provarla solo su un dispositivo
+registrato come *test device* nella console AdMob.
 
 ## Prima di pubblicare
 

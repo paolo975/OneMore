@@ -1,6 +1,19 @@
-param([ValidateSet('Android','Windows','All')][string]$Target = 'All')
+param([ValidateSet('Android','Windows','All')][string]$Target = 'All', [switch]$Release)
 $ErrorActionPreference = 'Stop'
 $projectPath = Split-Path $PSScriptRoot -Parent
+if ($Release) {
+    # Release signing: keystore/ is outside Git; Godot reads these variables when the preset's
+    # keystore fields are empty, so the password never enters export_presets.cfg.
+    $propsPath = Join-Path $projectPath 'keystore\release.properties'
+    if (!(Test-Path -LiteralPath $propsPath)) { throw "Manca $propsPath (vedi README.md)." }
+    $keystore = @{}
+    foreach ($line in Get-Content -LiteralPath $propsPath) {
+        if ($line -match '^\s*([^=#]+?)\s*=\s*(.*?)\s*$') { $keystore[$Matches[1]] = $Matches[2] }
+    }
+    $env:GODOT_ANDROID_KEYSTORE_RELEASE_PATH = Join-Path $projectPath $keystore['path']
+    $env:GODOT_ANDROID_KEYSTORE_RELEASE_USER = $keystore['alias']
+    $env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = $keystore['password']
+}
 $toolRoot = Join-Path $env:LOCALAPPDATA 'AncoraUnoTools'
 $godotPath = Join-Path $toolRoot 'Godot\Godot_v4.6-stable_win64.exe'
 $env:JAVA_HOME = (Get-ChildItem (Join-Path $toolRoot 'Java') -Directory | Select-Object -First 1).FullName
@@ -22,8 +35,14 @@ if (Test-Path -LiteralPath $configGradle) {
 }
 foreach ($buildTarget in $targets) {
     $logPath = Join-Path $projectPath ('artifacts\export-' + $buildTarget.ToLower() + '.log')
-    $launchArgs = '--headless --path "' + $projectPath + '" --export-debug ' + $buildTarget + ' --log-file "' + $logPath + '"'
-    $process = Start-Process -FilePath $godotPath -ArgumentList $launchArgs -WindowStyle Hidden -Wait -PassThru
+    $mode = if ($Release) { '--export-release' } else { '--export-debug' }
+    # The preset's export_path is the debug APK; a release build gets its own file next to it.
+    $outArg = if ($Release -and $buildTarget -eq 'Android') { ' "' + (Join-Path $projectPath 'artifacts\AncoraUno-release.apk') + '"' } else { '' }
+    $launchArgs = '--headless --path "' + $projectPath + '" ' + $mode + ' ' + $buildTarget + $outArg + ' --log-file "' + $logPath + '"'
+    # Not -Wait: that also waits for every descendant, and the Gradle daemon Godot spawns
+    # outlives the export by hours. WaitForExit returns as soon as Godot itself is done.
+    $process = Start-Process -FilePath $godotPath -ArgumentList $launchArgs -WindowStyle Hidden -PassThru
+    $process.WaitForExit()
     Get-Content -LiteralPath $logPath -Tail 8
     if ($process.ExitCode -ne 0) { throw "Export $buildTarget fallito; vedi $logPath" }
 }

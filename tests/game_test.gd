@@ -396,6 +396,8 @@ func run() -> void:
 	check(presets.load("res://export_presets.cfg")==OK,"the export presets are readable")
 	for section in ["preset.0","preset.1"]:
 		check("ads.cfg" in str(presets.get_value(section,"include_filter","")),"%s exports ads.cfg" % section)
+	# The package name is fixed forever once the app is on Play: nothing may drift it back.
+	check(presets.get_value("preset.0.options","package/unique_name","")=="com.neomobile.onemore","the Android preset keeps the published package name")
 	# Godot 4.6 rejects a typed Array[String] where the native plugin declares String[]: the three
 	# wrapper calls this game uses must hand over a PackedStringArray, or no ad ever loads on Android.
 	for pair in [
