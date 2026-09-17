@@ -1,6 +1,9 @@
-param([ValidateSet('Android','Windows','All')][string]$Target = 'All', [switch]$Release)
+param([ValidateSet('Android','Windows','Bundle','All')][string]$Target = 'All', [switch]$Release)
 $ErrorActionPreference = 'Stop'
 $projectPath = Split-Path $PSScriptRoot -Parent
+# Bundle is the AAB Play wants; the APK stays for testing on a phone. A debug bundle would carry
+# the Google test ad ids under a file named "release", so refuse it rather than hand it to Play.
+if ($Target -eq 'Bundle' -and !$Release) { throw "Il bundle per Play va firmato: usa -Target Bundle -Release." }
 if ($Release) {
     # Release signing: keystore/ is outside Git; Godot reads these variables when the preset's
     # keystore fields are empty, so the password never enters export_presets.cfg.
@@ -17,7 +20,9 @@ if ($Release) {
 $toolRoot = Join-Path $env:LOCALAPPDATA 'AncoraUnoTools'
 $godotPath = Join-Path $toolRoot 'Godot\Godot_v4.6-stable_win64.exe'
 $env:JAVA_HOME = (Get-ChildItem (Join-Path $toolRoot 'Java') -Directory | Select-Object -First 1).FullName
+# "All" stays the everyday pair; the bundle is only ever built on purpose, for a Play upload.
 $targets = if ($Target -eq 'All') { @('Android','Windows') } else { @($Target) }
+$presetOf = @{ 'Android' = 'Android'; 'Windows' = 'Windows'; 'Bundle' = 'Android AAB' }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'artifacts') | Out-Null
 # The AdMob 5.x aars require compileSdk 36; the Godot 4.6 template ships 35 and is regenerated
 # by "Install Android Build Template", so patch it every time, idempotently.
@@ -36,9 +41,10 @@ if (Test-Path -LiteralPath $configGradle) {
 foreach ($buildTarget in $targets) {
     $logPath = Join-Path $projectPath ('artifacts\export-' + $buildTarget.ToLower() + '.log')
     $mode = if ($Release) { '--export-release' } else { '--export-debug' }
-    # The preset's export_path is the debug APK; a release build gets its own file next to it.
+    # The Android preset's export_path is the debug APK; a release build gets its own file next to
+    # it. The bundle preset already points at the .aab, so it needs no override.
     $outArg = if ($Release -and $buildTarget -eq 'Android') { ' "' + (Join-Path $projectPath 'artifacts\AncoraUno-release.apk') + '"' } else { '' }
-    $launchArgs = '--headless --path "' + $projectPath + '" ' + $mode + ' ' + $buildTarget + $outArg + ' --log-file "' + $logPath + '"'
+    $launchArgs = '--headless --path "' + $projectPath + '" ' + $mode + ' "' + $presetOf[$buildTarget] + '"' + $outArg + ' --log-file "' + $logPath + '"'
     # Not -Wait: that also waits for every descendant, and the Gradle daemon Godot spawns
     # outlives the export by hours. WaitForExit returns as soon as Godot itself is done.
     $process = Start-Process -FilePath $godotPath -ArgumentList $launchArgs -WindowStyle Hidden -PassThru

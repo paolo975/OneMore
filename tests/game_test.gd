@@ -319,6 +319,35 @@ func run() -> void:
 			for i in 400:
 				biggest = maxi(biggest, game.SHAPES.find(game.make_piece().cells))
 			check(biggest==pair[1],"floor %d deals shapes up to index %d" % [pair[0],pair[1]])
+		# The third card was a single cell forever, so every hole could be plugged after the fact and
+		# the packing never bit. It now fades out with height: certain low down, then rarer, then gone.
+		check(game.helper_chance(1)==1.0 and game.helper_chance(game.HELPER_SURE_FLOOR)==1.0,"the third card is a sure single cell on the early floors")
+		check(game.helper_chance(game.HELPER_GONE_FLOOR)==0.0 and game.helper_chance(game.HELPER_GONE_FLOOR+40)==0.0,"high enough up, the third card is dealt like the other two")
+		var falling = true
+		for floor_id in range(game.HELPER_SURE_FLOOR, game.HELPER_GONE_FLOOR):
+			if game.helper_chance(floor_id+1) >= game.helper_chance(floor_id):
+				falling = false
+		check(falling,"the guarantee fades floor by floor, never in one step")
+		game.floor_number = 1
+		var low_sizes = {}
+		for i in 400:
+			low_sizes[game.deal_helper().cells.size()] = true
+		check(low_sizes.keys()==[1],"floor 1 always deals the third card as a single cell")
+		game.floor_number = (game.HELPER_SURE_FLOOR+game.HELPER_GONE_FLOOR)/2
+		var mid_sizes = {}
+		for i in 400:
+			mid_sizes[game.deal_helper().cells.size()] = true
+		check(mid_sizes.has(1) and mid_sizes.size()>1,"half way up, the third card is sometimes a single cell and sometimes not")
+		game.floor_number = game.HELPER_GONE_FLOOR
+		var high_singles = 0
+		for i in 400:
+			if game.deal_helper().cells.size()==1: high_singles += 1
+		# Never guaranteed does not mean never dealt: slots 0 and 1 already deal the single cell too,
+		# so it stays in the pool and a child is never left with nothing small.
+		check(high_singles>0 and high_singles<400,"the single cell stays in the pool even where it is no longer granted")
+		game.floor_number = 1
+		game.new_round()
+		check(game.tray[2].cells.size()==1,"a fresh floor 1 opens with a single cell in the third slot")
 		# Stars: one for the minimum, two half way to full, three for a full lift.
 		if not game.has_method("stars_for") or game.get("run_stars") == null:
 			check(false,"the game rates every floor with stars")
@@ -394,10 +423,25 @@ func run() -> void:
 	# presets name it. Left out, unit ids are empty and the layer stays silently off on devices.
 	var presets = ConfigFile.new()
 	check(presets.load("res://export_presets.cfg")==OK,"the export presets are readable")
-	for section in ["preset.0","preset.1"]:
+	for section in ["preset.0","preset.1","preset.2"]:
 		check("ads.cfg" in str(presets.get_value(section,"include_filter","")),"%s exports ads.cfg" % section)
 	# The package name is fixed forever once the app is on Play: nothing may drift it back.
 	check(presets.get_value("preset.0.options","package/unique_name","")=="com.neomobile.onemore","the Android preset keeps the published package name")
+	# Play takes only an App Bundle for production, so preset.2 exports an AAB while preset.0 keeps
+	# making the APK used for testing on a phone. Two Android presets means two places to forget a
+	# version bump, so everything that must stay identical is checked here rather than remembered.
+	check(presets.get_value("preset.2","platform","")=="Android","the bundle preset targets Android")
+	check(int(presets.get_value("preset.2.options","gradle_build/export_format",0))==1,"the bundle preset exports an AAB")
+	# Godot omits every entry equal to its default, and the default format is the APK: so an absent
+	# gradle_build/export_format is what preset.0 looks like when it is still exporting an APK.
+	check(int(presets.get_value("preset.0.options","gradle_build/export_format",0))==0,"the APK preset still exports an APK")
+	for key in ["package/unique_name","package/name","version/code","version/name",
+			"architectures/arm64-v8a","architectures/x86_64","architectures/armeabi-v7a","architectures/x86",
+			"gradle_build/use_gradle_build","gradle_build/compress_native_libraries",
+			"permissions/internet","screen/immersive_mode","package/signed","user_data_backup/allow"]:
+		check(presets.get_value("preset.0.options",key,null)==presets.get_value("preset.2.options",key,null),"APK and bundle agree on %s" % key)
+	for key in ["export_filter","include_filter","exclude_filter"]:
+		check(presets.get_value("preset.0",key,null)==presets.get_value("preset.2",key,null),"APK and bundle ship the same files (%s)" % key)
 	# Godot 4.6 rejects a typed Array[String] where the native plugin declares String[]: the three
 	# wrapper calls this game uses must hand over a PackedStringArray, or no ad ever loads on Android.
 	for pair in [

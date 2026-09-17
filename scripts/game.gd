@@ -12,6 +12,13 @@ const CELL = 86.0
 const SIDE = 5
 const PLAY_DOOR_MIN = 0.12
 const PLAY_DOOR_MAX = 0.55
+# Up to this floor the third card is always a single cell; from the second it is dealt like the
+# other two, with the odds sliding between the two. See helper_chance().
+const HELPER_SURE_FLOOR = 4
+const HELPER_GONE_FLOOR = 16
+# How opaque the panels are while the floor is in play. Closed doors during transit stay solid:
+# the stars are drawn on them and would show the lift through.
+const PLAY_DOOR_ALPHA = 0.72
 const TAP_SLOP = 14.0
 const TRAY_UNIT = 55.0
 const MUSIC_RATE = 22050
@@ -176,6 +183,21 @@ func blocked(cell: Vector2i) -> bool:
 			return true
 	return false
 
+# The third card used to be a single cell forever, so any hole could be plugged after the fact and
+# the packing never bit. It now fades with height: certain while the lift is low, then rarer and
+# rarer, then dealt like the other two. This is the one dial still moving once the timer, the
+# shapes, the target and the luggage have all hit their ceilings around floor 9.
+func helper_chance(floor_id: int) -> float:
+	if floor_id <= HELPER_SURE_FLOOR:
+		return 1.0
+	if floor_id >= HELPER_GONE_FLOOR:
+		return 0.0
+	return float(HELPER_GONE_FLOOR-floor_id)/float(HELPER_GONE_FLOOR-HELPER_SURE_FLOOR)
+
+# The third card: a single cell while the guarantee lasts, otherwise an ordinary draw.
+func deal_helper() -> Dictionary:
+	return make_piece(0) if rng.randf() < helper_chance(floor_number) else make_piece()
+
 func make_piece(shape_index: int = -1, person: int = -1) -> Dictionary:
 	serial += 1
 	if shape_index < 0:
@@ -205,7 +227,7 @@ func new_round() -> void:
 	newcomer = -1
 	pieces.clear()
 	drag.clear()
-	tray = [make_piece(3), make_piece(1), make_piece(0)]
+	tray = [make_piece(3), make_piece(1), deal_helper()]
 	selected = 0
 	place_luggage()
 	# At least three free cells beyond the minimum, however much luggage there is.
@@ -325,7 +347,7 @@ func release_drag(pos: Vector2) -> void:
 		drag.born = elapsed
 		pieces.append(drag.duplicate(true))
 		if drag_source >= 0:
-			tray[drag_source] = make_piece(0 if drag_source == 2 else -1)
+			tray[drag_source] = deal_helper() if drag_source == 2 else make_piece()
 		tone(580 + occupied()*14,0.09)
 		if occupied() >= target:
 			toast = t("toast_goal")
@@ -817,8 +839,8 @@ func _draw() -> void:
 		var edge = INK
 		# Solid enough to read at a glance, translucent enough to keep every cell playable.
 		if state == "playing":
-			panel.a = 0.82
-			edge.a = 0.82
+			panel.a = PLAY_DOOR_ALPHA
+			edge.a = PLAY_DOOR_ALPHA
 		box(Rect2(GRID,Vector2(dw,430)),panel,3,edge,2)
 		box(Rect2(GRID+Vector2(430-dw,0),Vector2(dw,430)),panel,3,edge,2)
 		if door >= 1.0:
