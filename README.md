@@ -21,7 +21,7 @@ Prototipo Godot 4.6 di un puzzle verticale per Android. Un ascensore da 5×5 cas
 - Record e preferenza audio restano sul dispositivo. Nessun account. L'unico traffico di rete è quello degli annunci AdMob, vedi sotto.
 - Pubblicità: un banner adattivo ancorato in basso durante la partita e un interstitial a tutto schermo al game over, prima della schermata finale. Gli annunci sono configurati come **child-directed** con classificazione **G**, quindi non personalizzati. Gli ID stanno in `ads.cfg`: ogni build di debug (editor, test, APK di prova) usa quelli di test di Google, solo la build release usa quelli del conto AdMob del gioco.
 
-La terza carta propone sempre un animale da una casella: evita situazioni impossibili e rende il primo prototipo accessibile. Bilanciamento e frequenza dei pezzi sono da valutare con playtest reali.
+La terza carta propone un animale da una casella, ma la garanzia si consuma salendo: è certa fino al piano 4 (`HELPER_SURE_FLOOR`), poi diventa sempre più rara e dal piano 16 (`HELPER_GONE_FLOOR`) la carta pesca come le altre due — 92% al piano 5, 67% all'8, 33% al 12, 8% al 15. Finché la garanzia regge, ogni buco è tappabile dopo averlo lasciato e l'incastro non morde: era questo a rendere ogni piano risolvibile allo stesso modo, e per sempre, visto che tutte le altre leve hanno un tetto entro il piano 9 (tempo al 7, forme al 7, obiettivo all'8, bagagli al 9, animali al 5). Le caselle singole non spariscono mai: anche gli slot 0 e 1 le pescano, e l'obiettivo conserva sempre tre celle libere (`capacity()-3`), così fino a tre buchi non riempibili non costano il piano. Tarare `HELPER_SURE_FLOOR` e `HELPER_GONE_FLOOR` è il modo per spostare la difficoltà: sono le due sole costanti in gioco.
 
 ## Sviluppo e build
 
@@ -32,6 +32,7 @@ powershell -ExecutionPolicy Bypass -File tools/run.ps1
 powershell -ExecutionPolicy Bypass -File tools/run.ps1 -Editor
 powershell -ExecutionPolicy Bypass -File tools/test.ps1
 powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Target All
+powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Target Bundle -Release
 powershell -ExecutionPolicy Bypass -File tools/store.ps1
 ```
 
@@ -51,7 +52,7 @@ Il pubblico è di bambini: prima di pubblicare vanno verificati la Families Poli
 
 I download di Godot e dei template sono stati confrontati con SHA512-SUMS ufficiale; JDK e strumenti SDK con i checksum pubblicati dalle rispettive fonti.
 
-La chiave Android **debug** è fuori dal repository, in `%APPDATA%/Godot/keystores/debug.keystore`. La chiave di **release** è in `keystore/` (cartella esclusa da Git): `release.keystore` più `release.properties` con alias e password, che `tools/build.ps1 -Release` legge e passa a Godot tramite le variabili `GODOT_ANDROID_KEYSTORE_RELEASE_*`. **Farne una copia di sicurezza fuori dal PC**: senza quella chiave non si può più aggiornare l'app pubblicata. Package: `com.neomobile.onemore`. Include ARM64 per telefoni e x86_64 per emulatore. Nessun AAB ancora: il preset esporta APK.
+La chiave Android **debug** è fuori dal repository, in `%APPDATA%/Godot/keystores/debug.keystore`. La chiave di **release** è in `keystore/` (cartella esclusa da Git): `release.keystore` più `release.properties` con alias e password, che `tools/build.ps1 -Release` legge e passa a Godot tramite le variabili `GODOT_ANDROID_KEYSTORE_RELEASE_*`. **Farne una copia di sicurezza fuori dal PC**: senza quella chiave non si può più aggiornare l'app pubblicata. Package: `com.neomobile.onemore`. Include ARM64 per telefoni e x86_64 per emulatore. Due preset Android: *Android* esporta l'APK con cui si prova sul telefono, *Android AAB* il bundle che Play pretende per la produzione (`tools/build.ps1 -Target Bundle -Release`, che rifiuta di girare senza `-Release` per non scrivere un bundle di debug sotto un nome che dice release). Tutto il resto dei due preset deve restare identico e un test lo pretende, perché due preset sono due posti dove dimenticare `version/code`.
 
 ## File
 

@@ -51,7 +51,9 @@ Non sono asset, ma senza di questi la scheda non passa in revisione:
    diagnostica per servire annunci; il gioco in sé non raccoglie nulla e non ha account.
 5. **Annunci**: spuntare «l'app contiene annunci».
 6. Categoria consigliata: *Puzzle* (o *Educativi*); e-mail di contatto dello sviluppatore.
-7. La build da caricare è la **release** firmata: `tools/build.ps1 -Target Android -Release` scrive
-   `artifacts/AncoraUno-release.apk` firmata con la chiave in `keystore/` (fuori da Git: farne una
-   copia di sicurezza). Solo lei usa gli unit ID di produzione di `ads.cfg`. Il pacchetto è
-   `com.neomobile.onemore` e non si può più cambiare dopo la pubblicazione.
+7. La build da caricare è il **bundle** firmato: `tools/build.ps1 -Target Bundle -Release` scrive
+   `artifacts/AncoraUno-release.aab` firmato con la chiave in `keystore/` (fuori da Git: farne una
+   copia di sicurezza). Play accetta solo un Android App Bundle, non un APK; l'APK di
+   `-Target Android -Release` resta per provare la build di produzione sul telefono prima di
+   caricarla. Entrambi usano gli unit ID di produzione di `ads.cfg`, che le build di debug non
+   toccano. Il pacchetto è `com.neomobile.onemore` e non si può più cambiare dopo la pubblicazione.

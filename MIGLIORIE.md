@@ -108,8 +108,11 @@ rimasti quelli di prima. Spec completa in `docs/superpowers/specs/2026-09-14-pia
 
 ## Da valutare al prossimo playtest
 
-- L'opacità delle porte all'82% e la corsa che si ferma a metà griglia: numeri scelti a tavolino,
-  vanno confermati da un bambino vero.
+- L'opacità delle porte al 72% (`PLAY_DOOR_ALPHA`, scesa dall'82% il 17/09) e la corsa che si ferma
+  a metà griglia: numeri scelti a tavolino, vanno confermati da un bambino vero.
+- La garanzia della terza carta che sfuma salendo: certa fino al piano 4 (`HELPER_SURE_FLOOR`),
+  spenta dal 16 (`HELPER_GONE_FLOOR`). È l'unica leva ancora in movimento oltre il piano 9, quindi
+  decide da sola dove finisce una partita lunga — e nessuno l'ha ancora vista in mano a un bambino.
 - La soglia di 14 pixel che separa tocco e trascinamento, su dita piccole e schermi diversi.
 - Bilanciamento dei pezzi e frequenza delle forme, mai verificati con un pubblico reale.
 - Quantità di bagagli per piano e soglia delle due stelle: numeri a tavolino, da guardare in mano a
